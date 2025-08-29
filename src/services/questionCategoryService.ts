@@ -14,7 +14,8 @@ export class QuestionCategoryService {
       const response = await api.post<QuestionCategory>('/question-categories', data)
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || '创建分类失败')
+      const message = error.response?.data?.message || error.response?.data || '创建分类失败'
+      throw new Error(typeof message === 'string' ? message : '创建分类失败')
     }
   }
 
@@ -26,7 +27,8 @@ export class QuestionCategoryService {
       const response = await api.put<QuestionCategory>(`/question-categories/${id}`, data)
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || '更新分类失败')
+      const message = error.response?.data?.message || error.response?.data || '更新分类失败'
+      throw new Error(typeof message === 'string' ? message : '更新分类失败')
     }
   }
 
@@ -37,7 +39,8 @@ export class QuestionCategoryService {
     try {
       await api.delete(`/question-categories/${id}`)
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || '删除分类失败')
+      const message = error.response?.data?.message || error.response?.data || '删除分类失败'
+      throw new Error(typeof message === 'string' ? message : '删除分类失败')
     }
   }
 
@@ -49,7 +52,21 @@ export class QuestionCategoryService {
       const response = await api.get<QuestionCategory[]>('/question-categories/tree')
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || '获取分类树失败')
+      const message = error.response?.data?.message || error.response?.data || '获取分类树失败'
+      throw new Error(typeof message === 'string' ? message : '获取分类树失败')
+    }
+  }
+
+  /**
+   * 获取启用的分类树（用于前端显示）
+   */
+  static async getEnabledCategoryTree(): Promise<QuestionCategory[]> {
+    try {
+      const response = await api.get<QuestionCategory[]>('/question-categories/tree/enabled')
+      return response.data
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.response?.data || '获取启用分类树失败'
+      throw new Error(typeof message === 'string' ? message : '获取启用分类树失败')
     }
   }
 
@@ -61,7 +78,8 @@ export class QuestionCategoryService {
       const response = await api.get<QuestionCategory[]>(`/question-categories/parent/${parentId}`)
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || '获取子分类失败')
+      const message = error.response?.data?.message || error.response?.data || '获取子分类失败'
+      throw new Error(typeof message === 'string' ? message : '获取子分类失败')
     }
   }
 
@@ -73,7 +91,8 @@ export class QuestionCategoryService {
       const response = await api.get<QuestionCategory[]>('/question-categories/top-level')
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || '获取顶级分类失败')
+      const message = error.response?.data?.message || error.response?.data || '获取顶级分类失败'
+      throw new Error(typeof message === 'string' ? message : '获取顶级分类失败')
     }
   }
 
@@ -82,11 +101,10 @@ export class QuestionCategoryService {
    */
   static async canDeleteCategory(id: number): Promise<boolean> {
     try {
-      const response = await api.get<{ canDelete: boolean }>(
-        `/question-categories/${id}/can-delete`,
-      )
-      return response.data.canDelete
+      const response = await api.get<boolean>(`/question-categories/${id}/can-delete`)
+      return response.data
     } catch (error: any) {
+      console.error('检查分类是否可删除失败:', error)
       return false
     }
   }
@@ -99,7 +117,8 @@ export class QuestionCategoryService {
       const response = await api.get<QuestionCategory>(`/question-categories/${id}`)
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || '获取分类详情失败')
+      const message = error.response?.data?.message || error.response?.data || '获取分类详情失败'
+      throw new Error(typeof message === 'string' ? message : '获取分类详情失败')
     }
   }
 }

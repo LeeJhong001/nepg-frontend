@@ -4,13 +4,22 @@ import type { LoginRequest, RegisterRequest, AuthResponse, User } from '../types
 import { config } from '../config'
 
 // 创建axios实例
+if (config.debug) {
+  console.log('API配置 - baseURL:', config.apiBaseUrl)
+}
 const api: AxiosInstance = axios.create({
   baseURL: config.apiBaseUrl,
   timeout: config.timeout,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // 启用cookie以接收CSRF token
 })
+
+// 调试信息
+if (config.debug) {
+  console.log('axios实例创建完成, baseURL:', api.defaults.baseURL)
+}
 
 // 请求拦截器 - 添加token到请求头
 api.interceptors.request.use(

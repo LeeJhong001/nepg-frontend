@@ -1,5 +1,20 @@
 <template>
   <div>
+    <!-- 通知容器 -->
+    <NotificationContainer />
+    
+    <!-- 确认对话框 -->
+    <ConfirmDialog
+      :show="confirmDialog.show"
+      :type="confirmDialog.type"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-text="confirmDialog.confirmText"
+      :cancel-text="confirmDialog.cancelText"
+      @confirm="confirmDialog.onConfirm"
+      @cancel="confirmDialog.onCancel"
+    />
+    
     <div class="mb-6">
       <h2 class="text-2xl font-bold text-gray-900">题目分类管理</h2>
       <p class="text-gray-600">管理系统中的所有题目分类</p>
@@ -80,7 +95,7 @@
           <h3 class="text-lg font-medium text-gray-900">分类树</h3>
           <div class="text-sm text-gray-600">
             <span v-if="filterEnabled !== 'all'">
-              筛选结果：{{ filteredCategories.length }} 个分类
+              筛选结果：{{ filteredCount }} 个分类
               <button
                 @click="filterEnabled = 'all'"
                 class="ml-2 text-blue-600 hover:text-blue-800 underline"
@@ -94,7 +109,7 @@
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
           <p class="mt-2 text-gray-500">加载中...</p>
         </div>
-        <div v-else-if="filteredCategories.length === 0" class="text-center py-8">
+        <div v-else-if="filteredCount === 0" class="text-center py-8">
           <div class="text-gray-400 mb-2">
             <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -425,11 +440,16 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, computed } from 'vue'
 import { QuestionCategoryService } from '../../services/questionCategoryService'
+import NotificationContainer from '../../components/NotificationContainer.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import { useNotification } from '../../composables/useNotification'
 import type {
   QuestionCategory,
   CreateCategoryRequest,
   UpdateCategoryRequest,
 } from '../../types/question'
+
+const { success, error, warning } = useNotification()
 
 const loading = ref(false)
 const categories = ref<QuestionCategory[]>([])
@@ -439,6 +459,41 @@ const showEditModal = ref(false)
 const editingCategory = ref<QuestionCategory | null>(null)
 const filterEnabled = ref<'all' | 'enabled' | 'disabled'>('all')
 
+// 确认对话框状态
+const confirmDialog = reactive({
+  show: false,
+  type: 'info' as 'info' | 'warning' | 'danger',
+  title: '',
+  message: '',
+  confirmText: '确认',
+  cancelText: '取消',
+  onConfirm: () => {},
+  onCancel: () => {
+    confirmDialog.show = false
+  },
+})
+
+// 显示确认对话框的辅助函数
+const showConfirmDialog = (
+  title: string,
+  message: string,
+  onConfirm: () => void,
+  type: 'info' | 'warning' | 'danger' = 'info',
+  confirmText = '确认',
+  cancelText = '取消'
+) => {
+  confirmDialog.title = title
+  confirmDialog.message = message
+  confirmDialog.type = type
+  confirmDialog.confirmText = confirmText
+  confirmDialog.cancelText = cancelText
+  confirmDialog.onConfirm = () => {
+    confirmDialog.show = false
+    onConfirm()
+  }
+  confirmDialog.show = true
+}
+
 const form = reactive<CreateCategoryRequest>({
   name: '',
   parentId: undefined,
@@ -447,20 +502,79 @@ const form = reactive<CreateCategoryRequest>({
   enabled: true,
 })
 
+// 递归筛选分类树的函数
+const filterCategoryTree = (categories: QuestionCategory[], filter: 'all' | 'enabled' | 'disabled'): QuestionCategory[] => {
+  if (filter === 'all') {
+    return categories
+  }
+
+  const filterRecursive = (cats: QuestionCategory[]): QuestionCategory[] => {
+    const result: QuestionCategory[] = []
+    
+    for (const cat of cats) {
+      const shouldInclude = filter === 'enabled' ? cat.enabled : !cat.enabled
+      
+      if (shouldInclude) {
+        // 如果当前分类符合条件，添加它（包括所有子分类）
+        result.push({
+          ...cat,
+          children: cat.children || []
+        })
+      } else if (cat.children && cat.children.length > 0) {
+        // 如果当前分类不符合条件，但有子分类，递归检查子分类
+        const filteredChildren = filterRecursive(cat.children)
+        if (filteredChildren.length > 0) {
+          // 如果有符合条件的子分类，保留当前分类但只显示符合条件的子分类
+          result.push({
+            ...cat,
+            children: filteredChildren
+          })
+        }
+      }
+    }
+    
+    return result
+  }
+
+  return filterRecursive(categories)
+}
+
 // 计算属性
 const filteredCategories = computed(() => {
-  if (filterEnabled.value === 'all') {
-    return categories.value
-  } else if (filterEnabled.value === 'enabled') {
-    return categories.value.filter((cat) => cat.enabled)
-  } else {
-    return categories.value.filter((cat) => !cat.enabled)
-  }
+  return filterCategoryTree(categories.value, filterEnabled.value)
 })
 
-const totalCategories = computed(() => categories.value.length)
-const enabledCount = computed(() => categories.value.filter((cat) => cat.enabled).length)
-const disabledCount = computed(() => categories.value.filter((cat) => !cat.enabled).length)
+// 筛选结果统计
+const filteredCount = computed(() => countAllCategories(filteredCategories.value).total)
+
+// 递归统计所有分类的函数
+const countAllCategories = (categories: QuestionCategory[]): { total: number; enabled: number; disabled: number } => {
+  let total = 0
+  let enabled = 0
+  let disabled = 0
+
+  const countRecursive = (cats: QuestionCategory[]) => {
+    for (const cat of cats) {
+      total++
+      if (cat.enabled) {
+        enabled++
+      } else {
+        disabled++
+      }
+      
+      if (cat.children && cat.children.length > 0) {
+        countRecursive(cat.children)
+      }
+    }
+  }
+
+  countRecursive(categories)
+  return { total, enabled, disabled }
+}
+
+const totalCategories = computed(() => countAllCategories(categories.value).total)
+const enabledCount = computed(() => countAllCategories(categories.value).enabled)
+const disabledCount = computed(() => countAllCategories(categories.value).disabled)
 
 // 获取所有子分类（用于父分类选择）
 const allSubCategories = computed(() => {
@@ -552,7 +666,7 @@ const loadCategories = async () => {
     } catch (fallbackError: any) {
       console.error('降级方案也失败:', fallbackError)
       categories.value = []
-      alert('无法加载分类数据，使用模拟数据进行演示')
+      warning('无法加载分类数据', '使用模拟数据进行演示')
       // 使用模拟数据作为最后的降级方案
       categories.value = [
         {
@@ -672,53 +786,67 @@ const editCategory = (category: QuestionCategory) => {
   showEditModal.value = true
 }
 
-const toggleCategoryStatus = async (category: QuestionCategory) => {
+const toggleCategoryStatus = (category: QuestionCategory) => {
   const action = category.enabled ? '禁用' : '启用'
-  if (!confirm(`确定要${action}分类"${category.name}"吗？`)) return
+  showConfirmDialog(
+    `${action}分类`,
+    `确定要${action}分类"${category.name}"吗？`,
+    async () => {
+      try {
+        const updateData: UpdateCategoryRequest = {
+          name: category.name,
+          parentId: category.parentId,
+          description: category.description || '',
+          sortOrder: category.sortOrder,
+          enabled: !category.enabled,
+        }
 
-  try {
-    const updateData: UpdateCategoryRequest = {
-      name: category.name,
-      parentId: category.parentId,
-      description: category.description || '',
-      sortOrder: category.sortOrder,
-      enabled: !category.enabled,
-    }
-
-    await QuestionCategoryService.updateCategory(category.id, updateData)
-    alert(`${action}成功`)
-    loadCategories() // 重新加载数据
-  } catch (error: any) {
-    alert(`操作失败: ${error.message}`)
-  }
+        await QuestionCategoryService.updateCategory(category.id, updateData)
+        success(`${action}成功`, `分类"${category.name}"已${action}`)
+        loadCategories() // 重新加载数据
+      } catch (error: any) {
+        error(`操作失败`, error.message)
+      }
+    },
+    'warning',
+    action,
+    '取消'
+  )
 }
 
-const deleteCategory = async (id: number) => {
-  if (!confirm('确定要删除这个分类吗？')) return
+const deleteCategory = (id: number) => {
+  showConfirmDialog(
+    '删除分类',
+    '确定要删除这个分类吗？删除后无法恢复。',
+    async () => {
+      try {
+        const canDelete = await QuestionCategoryService.canDeleteCategory(id)
+        if (!canDelete) {
+          warning('无法删除', '该分类下有题目，无法删除')
+          return
+        }
 
-  try {
-    const canDelete = await QuestionCategoryService.canDeleteCategory(id)
-    if (!canDelete) {
-      alert('该分类下有题目，无法删除')
-      return
-    }
-
-    await QuestionCategoryService.deleteCategory(id)
-    alert('删除成功')
-    loadCategories()
-  } catch (error: any) {
-    alert(error.message)
-  }
+        await QuestionCategoryService.deleteCategory(id)
+        success('删除成功', '分类已成功删除')
+        loadCategories()
+      } catch (error: any) {
+        error('删除失败', error.message)
+      }
+    },
+    'danger',
+    '删除',
+    '取消'
+  )
 }
 
 const submitForm = async () => {
   try {
     if (showEditModal.value && editingCategory.value) {
       await QuestionCategoryService.updateCategory(editingCategory.value.id, form)
-      alert('更新成功')
+      success('更新成功', `分类"${form.name}"已成功更新`)
     } else {
       await QuestionCategoryService.createCategory(form)
-      alert('创建成功')
+      success('创建成功', `分类"${form.name}"已成功创建`)
     }
 
     closeModal()
@@ -726,7 +854,7 @@ const submitForm = async () => {
     await loadCategories()
     await loadTopLevelCategories()
   } catch (error: any) {
-    alert(error.message)
+    error(showEditModal.value ? '更新失败' : '创建失败', error.message)
   }
 }
 
