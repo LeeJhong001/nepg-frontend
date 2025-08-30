@@ -43,7 +43,7 @@
               用户名
             </label>
             <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <!-- <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   class="h-5 w-5 text-gray-400"
                   fill="none"
@@ -57,7 +57,7 @@
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
                 </svg>
-              </div>
+              </div> -->
               <input
                 id="username"
                 v-model="form.username"
@@ -74,7 +74,7 @@
           <div>
             <label for="email" class="block text-sm font-semibold text-gray-700 mb-2"> 邮箱 </label>
             <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <!-- <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   class="h-5 w-5 text-gray-400"
                   fill="none"
@@ -88,7 +88,7 @@
                     d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                   />
                 </svg>
-              </div>
+              </div> -->
               <input
                 id="email"
                 v-model="form.email"
@@ -107,7 +107,7 @@
               真实姓名
             </label>
             <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <!-- <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   class="h-5 w-5 text-gray-400"
                   fill="none"
@@ -121,7 +121,7 @@
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
                 </svg>
-              </div>
+              </div> -->
               <input
                 id="realName"
                 v-model="form.realName"
@@ -140,7 +140,7 @@
               密码
             </label>
             <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <!-- <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   class="h-5 w-5 text-gray-400"
                   fill="none"
@@ -154,7 +154,7 @@
                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                   />
                 </svg>
-              </div>
+              </div> -->
               <input
                 id="password"
                 v-model="form.password"
@@ -173,7 +173,7 @@
               确认密码
             </label>
             <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <!-- <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   class="h-5 w-5 text-gray-400"
                   fill="none"
@@ -187,7 +187,7 @@
                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-              </div>
+              </div> -->
               <input
                 id="confirmPassword"
                 v-model="confirmPassword"

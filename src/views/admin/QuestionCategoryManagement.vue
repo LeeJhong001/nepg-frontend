@@ -146,9 +146,38 @@
           </button>
         </div>
         <div v-else class="space-y-2">
-          <!-- 递归渲染分类树 -->
+          <!-- 分页信息 -->
+          <div class="flex justify-between items-center mb-4">
+            <div class="text-sm text-gray-700">
+              <span v-if="totalElements > 0">
+                显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, totalElements) }} 条，
+                共 {{ totalElements }} 条记录
+              </span>
+              <span v-else>
+                暂无数据
+              </span>
+            </div>
+            
+            <!-- 每页条数选择 -->
+            <div class="flex items-center space-x-2">
+              <span class="text-sm text-gray-700">每页</span>
+              <select
+                v-model="pageSize"
+                @change="handlePageSizeChange"
+                class="px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+              <span class="text-sm text-gray-700">条</span>
+            </div>
+          </div>
+
+          <!-- 分页后的分类列表 -->
           <div
-            v-for="category in filteredCategories"
+            v-for="category in paginatedCategories"
             :key="category.id"
             class="border border-gray-200 rounded-lg p-4"
           >
@@ -157,7 +186,9 @@
               <!-- 分类信息行 -->
               <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                  <span class="text-sm font-medium text-gray-900">{{ category.name }}</span>
+                  <span class="text-sm font-medium text-gray-900" :style="{ marginLeft: category.level * 20 + 'px' }">
+                    {{ category.displayName }}
+                  </span>
                   <span v-if="category.description" class="text-sm text-gray-500">
                     {{ category.description }}
                   </span>
@@ -173,7 +204,7 @@
                   <span class="text-xs text-gray-400">
                     {{ category.enabled ? '✓' : '✗' }}
                   </span>
-                  <span class="text-xs text-gray-500">层级: 0</span>
+                  <span class="text-xs text-gray-500">层级: {{ category.level }}</span>
                 </div>
                 <div class="flex items-center space-x-2">
                   <button
@@ -202,126 +233,80 @@
                 </div>
               </div>
 
-              <!-- 递归渲染子分类 -->
-              <div
-                v-if="category.children && category.children.length > 0"
-                class="mt-3 ml-6 space-y-2 border-l-2 border-gray-200 pl-4"
-              >
-                <div v-for="child in category.children" :key="child.id" class="space-y-2">
-                  <!-- 子分类信息行 -->
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                      <span class="text-sm text-gray-700">{{ child.name }}</span>
-                      <span v-if="child.description" class="text-sm text-gray-500">
-                        {{ child.description }}
-                      </span>
-                      <span class="text-xs text-gray-400">排序: {{ child.sortOrder }}</span>
-                      <span
-                        :class="
-                          child.enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        "
-                        class="px-2 py-1 text-xs rounded-full"
-                      >
-                        {{ child.enabled ? '启用' : '禁用' }}
-                      </span>
-                      <span class="text-xs text-gray-400">
-                        {{ child.enabled ? '✓' : '✗' }}
-                      </span>
-                      <span class="text-xs text-gray-500">层级: 1</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                      <button
-                        @click="toggleCategoryStatus(child)"
-                        :class="
-                          child.enabled
-                            ? 'text-yellow-600 hover:text-yellow-800'
-                            : 'text-green-600 hover:text-green-800'
-                        "
-                        class="text-sm"
-                      >
-                        {{ child.enabled ? '禁用' : '启用' }}
-                      </button>
-                      <button
-                        @click="editCategory(child)"
-                        class="text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        编辑
-                      </button>
-                      <button
-                        @click="deleteCategory(child.id)"
-                        class="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        删除
-                      </button>
-                    </div>
-                  </div>
 
-                  <!-- 递归渲染孙分类 -->
-                  <div
-                    v-if="child.children && child.children.length > 0"
-                    class="mt-3 ml-6 space-y-2 border-l-2 border-gray-200 pl-4"
-                  >
-                    <div
-                      v-for="grandchild in child.children"
-                      :key="grandchild.id"
-                      class="space-y-2"
-                    >
-                      <!-- 孙分类信息行 -->
-                      <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                          <span class="text-sm text-gray-600">{{ grandchild.name }}</span>
-                          <span v-if="grandchild.description" class="text-sm text-gray-500">
-                            {{ grandchild.description }}
-                          </span>
-                          <span class="text-xs text-gray-400"
-                            >排序: {{ grandchild.sortOrder }}</span
-                          >
-                          <span
-                            :class="
-                              grandchild.enabled
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            "
-                            class="px-2 py-1 text-xs rounded-full"
-                          >
-                            {{ grandchild.enabled ? '启用' : '禁用' }}
-                          </span>
-                          <span class="text-xs text-gray-400">
-                            {{ grandchild.enabled ? '✓' : '✗' }}
-                          </span>
-                          <span class="text-xs text-gray-500">层级: 2</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                          <button
-                            @click="toggleCategoryStatus(grandchild)"
-                            :class="
-                              grandchild.enabled
-                                ? 'text-yellow-600 hover:text-yellow-800'
-                                : 'text-green-600 hover:text-green-800'
-                            "
-                            class="text-sm"
-                          >
-                            {{ grandchild.enabled ? '禁用' : '启用' }}
-                          </button>
-                          <button
-                            @click="editCategory(grandchild)"
-                            class="text-blue-600 hover:text-blue-800 text-sm"
-                          >
-                            编辑
-                          </button>
-                          <button
-                            @click="deleteCategory(grandchild.id)"
-                            class="text-red-600 hover:text-red-800 text-sm"
-                          >
-                            删除
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
+          </div>
+
+          <!-- 分页控件 -->
+          <div v-if="totalPages > 0" class="flex justify-center mt-6">
+            <nav class="flex items-center space-x-2">
+              <!-- 首页 -->
+              <button
+                @click="handlePageChange(1)"
+                :disabled="currentPage === 1"
+                class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="首页"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <!-- 上一页 -->
+              <button
+                @click="handlePageChange(currentPage - 1)"
+                :disabled="currentPage === 1"
+                class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="上一页"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <!-- 页码 -->
+              <div class="flex items-center space-x-1">
+                <template v-for="page in getVisiblePages()" :key="page">
+                  <button
+                    v-if="page !== '...'"
+                    @click="handlePageChange(page)"
+                    :class="[
+                      'px-3 py-2 text-sm border rounded-md transition-colors',
+                      page === currentPage
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ]"
+                  >
+                    {{ page }}
+                  </button>
+                  <span v-else class="px-2 text-gray-500">...</span>
+                </template>
+              </div>
+              
+              <!-- 下一页 -->
+              <button
+                @click="handlePageChange(currentPage + 1)"
+                :disabled="currentPage === totalPages"
+                class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="下一页"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              <!-- 末页 -->
+              <button
+                @click="handlePageChange(totalPages)"
+                :disabled="currentPage === totalPages"
+                class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="末页"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7" />
+                </svg>
+              </button>
+            </nav>
           </div>
         </div>
       </div>
@@ -438,7 +423,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { QuestionCategoryService } from '../../services/questionCategoryService'
 import NotificationContainer from '../../components/NotificationContainer.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
@@ -458,6 +443,12 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingCategory = ref<QuestionCategory | null>(null)
 const filterEnabled = ref<'all' | 'enabled' | 'disabled'>('all')
+
+// 分页相关变量
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalPages = ref(0)
+const totalElements = ref(0)
 
 // 确认对话框状态
 const confirmDialog = reactive({
@@ -539,13 +530,61 @@ const filterCategoryTree = (categories: QuestionCategory[], filter: 'all' | 'ena
   return filterRecursive(categories)
 }
 
+// 将树形分类展平为列表的函数
+const flattenCategories = (categories: QuestionCategory[], level: number = 0): Array<QuestionCategory & { displayName: string; level: number }> => {
+  const result: Array<QuestionCategory & { displayName: string; level: number }> = []
+  
+  for (const category of categories) {
+    // 添加缩进表示层级关系
+    const indent = '　'.repeat(level) // 使用全角空格作为缩进
+    const prefix = level > 0 ? '└ ' : ''
+    const displayName = indent + prefix + category.name
+    
+    result.push({
+      ...category,
+      displayName,
+      level
+    })
+    
+    // 递归处理子分类
+    if (category.children && category.children.length > 0) {
+      result.push(...flattenCategories(category.children, level + 1))
+    }
+  }
+  
+  return result
+}
+
 // 计算属性
 const filteredCategories = computed(() => {
   return filterCategoryTree(categories.value, filterEnabled.value)
 })
 
+// 展平后的分类列表
+const flattenedCategories = computed(() => {
+  return flattenCategories(filteredCategories.value)
+})
+
+// 分页后的分类列表
+const paginatedCategories = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return flattenedCategories.value.slice(start, end)
+})
+
 // 筛选结果统计
 const filteredCount = computed(() => countAllCategories(filteredCategories.value).total)
+
+// 更新分页信息
+const updatePagination = () => {
+  totalElements.value = flattenedCategories.value.length
+  totalPages.value = Math.ceil(totalElements.value / pageSize.value)
+  
+  // 确保当前页不超出范围
+  if (currentPage.value > totalPages.value && totalPages.value > 0) {
+    currentPage.value = totalPages.value
+  }
+}
 
 // 递归统计所有分类的函数
 const countAllCategories = (categories: QuestionCategory[]): { total: number; enabled: number; disabled: number } => {
@@ -575,6 +614,69 @@ const countAllCategories = (categories: QuestionCategory[]): { total: number; en
 const totalCategories = computed(() => countAllCategories(categories.value).total)
 const enabledCount = computed(() => countAllCategories(categories.value).enabled)
 const disabledCount = computed(() => countAllCategories(categories.value).disabled)
+
+// 分页处理函数
+const handlePageChange = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+const handlePageSizeChange = () => {
+  currentPage.value = 1 // 重置到第一页
+}
+
+// 获取可见的页码
+const getVisiblePages = () => {
+  const pages: (number | string)[] = []
+  const total = totalPages.value
+  const current = currentPage.value
+  
+  if (total <= 7) {
+    // 如果总页数小于等于7，显示所有页码
+    for (let i = 1; i <= total; i++) {
+      pages.push(i)
+    }
+  } else {
+    // 如果总页数大于7，显示部分页码
+    if (current <= 4) {
+      // 当前页在前4页
+      for (let i = 1; i <= 5; i++) {
+        pages.push(i)
+      }
+      pages.push('...')
+      pages.push(total)
+    } else if (current >= total - 3) {
+      // 当前页在后4页
+      pages.push(1)
+      pages.push('...')
+      for (let i = total - 4; i <= total; i++) {
+        pages.push(i)
+      }
+    } else {
+      // 当前页在中间
+      pages.push(1)
+      pages.push('...')
+      for (let i = current - 1; i <= current + 1; i++) {
+        pages.push(i)
+      }
+      pages.push('...')
+      pages.push(total)
+    }
+  }
+  
+  return pages
+}
+
+// 监听筛选条件变化，重置页码
+watch(filterEnabled, () => {
+  currentPage.value = 1
+})
+
+// 监听展平后的分类列表变化，更新分页信息
+watch(flattenedCategories, () => {
+  updatePagination()
+}, { immediate: true })
 
 // 获取所有子分类（用于父分类选择）
 const allSubCategories = computed(() => {
@@ -873,3 +975,51 @@ const resetForm = () => {
   form.enabled = true
 }
 </script>
+
+<style scoped>
+/* 分页样式 */
+.pagination-info {
+  @apply text-sm text-gray-700;
+}
+
+.pagination-controls {
+  @apply flex items-center space-x-2;
+}
+
+.page-button {
+  @apply px-3 py-2 text-sm border border-gray-300 rounded-md transition-colors;
+}
+
+.page-button:hover:not(:disabled) {
+  @apply bg-gray-50;
+}
+
+.page-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.page-button.active {
+  @apply bg-blue-600 text-white border-blue-600;
+}
+
+.page-size-selector {
+  @apply flex items-center space-x-2;
+}
+
+/* 分类层级缩进 */
+.category-level-0 {
+  margin-left: 0;
+}
+
+.category-level-1 {
+  margin-left: 20px;
+}
+
+.category-level-2 {
+  margin-left: 40px;
+}
+
+.category-level-3 {
+  margin-left: 60px;
+}
+</style>

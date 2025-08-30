@@ -67,11 +67,6 @@ const router = createRouter({
           component: () => import('../views/admin/UserManagement.vue'),
         },
         {
-          path: 'projects',
-          name: 'admin-projects',
-          component: () => import('../views/admin/ProjectManagement.vue'),
-        },
-        {
           path: 'question-categories',
           name: 'admin-question-categories',
           component: () => import('../views/admin/QuestionCategoryManagement.vue'),
@@ -80,6 +75,21 @@ const router = createRouter({
           path: 'questions',
           name: 'admin-questions',
           component: () => import('../views/admin/QuestionManagement.vue'),
+        },
+        {
+          path: 'questions/create',
+          name: 'admin-questions-create',
+          component: () => import('../views/admin/QuestionForm.vue'),
+        },
+        {
+          path: 'questions/:id/edit',
+          name: 'admin-questions-edit',
+          component: () => import('../views/admin/QuestionForm.vue'),
+        },
+        {
+          path: 'questions/:id',
+          name: 'admin-questions-detail',
+          component: () => import('../views/admin/QuestionDetail.vue'),
         },
       ],
     },
