@@ -224,8 +224,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { teacherExamPaperService, type ExamPaper, type ExamPaperListParams } from '../../../services/teacher/examPaperService'
+import { useNotification } from '../../../composables/useNotification'
 
 const router = useRouter()
+const { success, error } = useNotification()
 
 // 筛选条件
 const filters = ref({
@@ -239,35 +242,8 @@ const activeDropdown = ref<number | null>(null)
 const dropdownRef = ref<HTMLElement>()
 
 // 试卷列表
-const papers = ref([
-  {
-    id: 1,
-    title: '数学期中试卷',
-    description: '涵盖前半学期所有知识点',
-    questionCount: 20,
-    totalScore: 100,
-    difficulty: 'medium',
-    createdAt: '2024-01-15T10:00:00'
-  },
-  {
-    id: 2,
-    title: '语文阅读理解专项',
-    description: '专门训练阅读理解能力',
-    questionCount: 15,
-    totalScore: 80,
-    difficulty: 'hard',
-    createdAt: '2024-01-14T14:30:00'
-  },
-  {
-    id: 3,
-    title: '英语基础测试',
-    description: '基础词汇和语法测试',
-    questionCount: 25,
-    totalScore: 120,
-    difficulty: 'easy',
-    createdAt: '2024-01-13T09:15:00'
-  }
-])
+const papers = ref<ExamPaper[]>([])
+const loading = ref(false)
 
 // 分页
 const pagination = ref({
@@ -277,18 +253,33 @@ const pagination = ref({
   totalItems: 0
 })
 
+// 加载试卷列表
+const loadPapers = async () => {
+  try {
+    loading.value = true
+    const params: ExamPaperListParams = {
+      page: pagination.value.current,
+      size: pagination.value.size,
+      search: filters.value.search || undefined,
+      category: filters.value.category || undefined,
+      difficulty: filters.value.difficulty || undefined
+    }
+    
+    const response = await teacherExamPaperService.getExamPaperList(params)
+    papers.value = response.data.items
+    pagination.value.total = response.data.totalPages
+    pagination.value.totalItems = response.data.totalItems
+  } catch (err) {
+    error('加载试卷列表失败')
+    console.error('Load papers error:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
 // 筛选后的试卷
 const filteredPapers = computed(() => {
-  return papers.value.filter(paper => {
-    const matchSearch = !filters.value.search || 
-      paper.title.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-      paper.description.toLowerCase().includes(filters.value.search.toLowerCase())
-    
-    const matchCategory = !filters.value.category || paper.title.toLowerCase().includes(filters.value.category)
-    const matchDifficulty = !filters.value.difficulty || paper.difficulty === filters.value.difficulty
-    
-    return matchSearch && matchCategory && matchDifficulty
-  })
+  return papers.value
 })
 
 // 分页后的试卷
@@ -324,10 +315,15 @@ const updatePagination = () => {
   }
 }
 
-// 监听筛选条件变化
-watch(filteredPapers, () => {
-  updatePagination()
-}, { immediate: true })
+// 搜索防抖
+let searchTimeout: NodeJS.Timeout
+const handleSearch = () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    pagination.value.current = 1
+    loadPapers()
+  }, 500)
+}
 
 // 重置筛选
 const resetFilters = () => {
@@ -336,6 +332,8 @@ const resetFilters = () => {
     category: '',
     difficulty: ''
   }
+  pagination.value.current = 1
+  loadPapers()
 }
 
 // 下拉菜单控制
@@ -353,17 +351,20 @@ const closeDropdown = (event: Event) => {
 const previousPage = () => {
   if (pagination.value.current > 1) {
     pagination.value.current--
+    loadPapers()
   }
 }
 
 const nextPage = () => {
   if (pagination.value.current < pagination.value.total) {
     pagination.value.current++
+    loadPapers()
   }
 }
 
 const goToPage = (page: number) => {
   pagination.value.current = page
+  loadPapers()
 }
 
 // 难度样式和文本
@@ -422,19 +423,23 @@ const copyPaper = async (id: number) => {
 }
 
 const deletePaper = async (id: number) => {
-  if (confirm('确定要删除这个试卷吗？')) {
-    try {
-      // TODO: 调用删除API
-      console.log('Delete paper:', id)
-      activeDropdown.value = null
-    } catch (error) {
-      console.error('Failed to delete paper:', error)
-    }
+  if (!confirm('确定要删除这个试卷吗？此操作不可撤销。')) {
+    return
   }
+  
+  try {
+    await teacherExamPaperService.deleteExamPaper(id)
+    success('试卷删除成功')
+    await loadPapers()
+  } catch (err) {
+    error('删除试卷失败')
+    console.error('Delete paper error:', err)
+  }
+  closeDropdown()
 }
 
 onMounted(() => {
-  // TODO: 加载试卷列表
+  loadPapers()
   document.addEventListener('click', closeDropdown)
 })
 

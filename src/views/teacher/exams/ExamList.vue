@@ -251,10 +251,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { teacherExamService, type Exam, type ExamListParams } from '../../../services/teacher/examService'
+import { useNotification } from '../../../composables/useNotification'
 
 const router = useRouter()
+const { success, error } = useNotification()
 
 // 筛选条件
 const filters = ref({
@@ -267,32 +270,8 @@ const filters = ref({
 const selectedExams = ref<number[]>([])
 
 // 考试列表
-const exams = ref([
-  {
-    id: 1,
-    title: '期中考试',
-    description: '数学期中测试',
-    status: 'published',
-    startTime: '2024-01-15T09:00:00',
-    endTime: '2024-01-15T11:00:00'
-  },
-  {
-    id: 2,
-    title: '单元测试',
-    description: '第三单元测试',
-    status: 'draft',
-    startTime: '2024-01-20T14:00:00',
-    endTime: '2024-01-20T15:30:00'
-  },
-  {
-    id: 3,
-    title: '期末考试',
-    description: '期末综合测试',
-    status: 'archived',
-    startTime: '2024-01-10T09:00:00',
-    endTime: '2024-01-10T11:30:00'
-  }
-])
+const exams = ref<Exam[]>([])
+const loading = ref(false)
 
 // 分页
 const pagination = ref({
@@ -302,20 +281,33 @@ const pagination = ref({
   totalItems: 0
 })
 
+// 加载考试列表
+const loadExams = async () => {
+  try {
+    loading.value = true
+    const params: ExamListParams = {
+      page: pagination.value.current,
+      size: pagination.value.size,
+      search: filters.value.search || undefined,
+      status: filters.value.status || undefined,
+      startDate: filters.value.startDate || undefined
+    }
+    
+    const response = await teacherExamService.getExamList(params)
+    exams.value = response.data.items
+    pagination.value.total = response.data.totalPages
+    pagination.value.totalItems = response.data.totalItems
+  } catch (err) {
+    error('加载考试列表失败')
+    console.error('Load exams error:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
 // 筛选后的考试
 const filteredExams = computed(() => {
-  return exams.value.filter(exam => {
-    const matchSearch = !filters.value.search || 
-      exam.title.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-      exam.description.toLowerCase().includes(filters.value.search.toLowerCase())
-    
-    const matchStatus = !filters.value.status || exam.status === filters.value.status
-    
-    const matchDate = !filters.value.startDate || 
-      new Date(exam.startTime).toDateString() === new Date(filters.value.startDate).toDateString()
-    
-    return matchSearch && matchStatus && matchDate
-  })
+  return exams.value
 })
 
 // 分页后的考试
@@ -359,10 +351,13 @@ const updatePagination = () => {
 }
 
 // 监听筛选条件变化
-watch(filteredExams, () => {
-  updatePagination()
-  selectedExams.value = []
-}, { immediate: true })
+const handleSearch = () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    pagination.value.current = 1
+    loadExams()
+  }, 500)
+}
 
 // 重置筛选
 const resetFilters = () => {
@@ -371,6 +366,8 @@ const resetFilters = () => {
     status: '',
     startDate: ''
   }
+  pagination.value.current = 1
+  loadExams()
 }
 
 // 全选/取消全选
@@ -383,20 +380,23 @@ const toggleSelectAll = () => {
 }
 
 // 分页操作
-const previousPage = () => {
-  if (pagination.value.current > 1) {
-    pagination.value.current--
-  }
+const goToPage = (page: number) => {
+  pagination.value.current = page
+  loadExams()
 }
 
 const nextPage = () => {
   if (pagination.value.current < pagination.value.total) {
     pagination.value.current++
+    loadExams()
   }
 }
 
-const goToPage = (page: number) => {
-  pagination.value.current = page
+const previousPage = () => {
+  if (pagination.value.current > 1) {
+    pagination.value.current--
+    loadExams()
+  }
 }
 
 // 状态样式
@@ -452,30 +452,38 @@ const copyExam = async (id: number) => {
 
 const publishExam = async (id: number) => {
   try {
-    // TODO: 调用发布API
-    console.log('Publish exam:', id)
-  } catch (error) {
-    console.error('Failed to publish exam:', error)
+    await teacherExamService.publishExam(id)
+    success('考试发布成功')
+    await loadExams()
+  } catch (err) {
+    error('发布考试失败')
+    console.error('Publish exam error:', err)
   }
 }
 
 const archiveExam = async (id: number) => {
   try {
-    // TODO: 调用归档API
-    console.log('Archive exam:', id)
-  } catch (error) {
-    console.error('Failed to archive exam:', error)
+    await teacherExamService.archiveExam(id)
+    success('考试归档成功')
+    await loadExams()
+  } catch (err) {
+    error('归档考试失败')
+    console.error('Archive exam error:', err)
   }
 }
 
 const deleteExam = async (id: number) => {
-  if (confirm('确定要删除这个考试吗？')) {
-    try {
-      // TODO: 调用删除API
-      console.log('Delete exam:', id)
-    } catch (error) {
-      console.error('Failed to delete exam:', error)
-    }
+  if (!confirm('确定要删除这个考试吗？此操作不可撤销。')) {
+    return
+  }
+  
+  try {
+    await teacherExamService.deleteExam(id)
+    success('考试删除成功')
+    await loadExams()
+  } catch (err) {
+    error('删除考试失败')
+    console.error('Delete exam error:', err)
   }
 }
 
@@ -499,17 +507,22 @@ const batchArchive = async () => {
 }
 
 const batchDelete = async () => {
-  if (confirm(`确定要删除选中的 ${selectedExams.value.length} 个考试吗？`)) {
-    try {
-      // TODO: 调用批量删除API
-      console.log('Batch delete:', selectedExams.value)
-    } catch (error) {
-      console.error('Failed to batch delete:', error)
-    }
+  if (!confirm(`确定要删除选中的 ${selectedExams.value.length} 个考试吗？此操作不可撤销。`)) {
+    return
+  }
+  
+  try {
+    await teacherExamService.batchDeleteExams(selectedExams.value)
+    success('批量删除成功')
+    selectedExams.value = []
+    await loadExams()
+  } catch (err) {
+    error('批量删除失败')
+    console.error('Batch delete error:', err)
   }
 }
 
 onMounted(() => {
-  // TODO: 加载考试列表
+  loadExams()
 })
 </script>

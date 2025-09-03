@@ -154,86 +154,28 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import CategoryTreeNode from './CategoryTreeNode.vue'
+import { categoryService, type Category, type CreateCategoryRequest } from '../../../services/teacher/categoryService'
+import { useNotification } from '../../../composables/useNotification'
 
-interface Category {
-  id: number
-  name: string
-  description: string
-  parentId: number | null
-  sort: number
-  status: 'active' | 'inactive'
-  children?: Category[]
-  level?: number
-}
+const { success, error } = useNotification()
 
-// 搜索和筛选
+// 响应式数据
+const categories = ref<Category[]>([])
+const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
-
-// 模态框状态
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingCategory = ref<Category | null>(null)
 
 // 表单数据
-const formData = ref({
+const formData = ref<CreateCategoryRequest>({
   name: '',
   description: '',
-  parentId: null as number | null,
-  sort: 0,
-  status: true
+  parentId: undefined,
+  sortOrder: 0,
+  enabled: true
 })
-
-// 分类数据
-const categories = ref<Category[]>([
-  {
-    id: 1,
-    name: '数学',
-    description: '数学相关题目',
-    parentId: null,
-    sort: 1,
-    status: 'active',
-    children: [
-      {
-        id: 2,
-        name: '代数',
-        description: '代数题目',
-        parentId: 1,
-        sort: 1,
-        status: 'active',
-        children: []
-      },
-      {
-        id: 3,
-        name: '几何',
-        description: '几何题目',
-        parentId: 1,
-        sort: 2,
-        status: 'active',
-        children: []
-      }
-    ]
-  },
-  {
-    id: 4,
-    name: '语文',
-    description: '语文相关题目',
-    parentId: null,
-    sort: 2,
-    status: 'active',
-    children: [
-      {
-        id: 5,
-        name: '阅读理解',
-        description: '阅读理解题目',
-        parentId: 4,
-        sort: 1,
-        status: 'active',
-        children: []
-      }
-    ]
-  }
-])
 
 // 筛选后的分类
 const filteredCategories = computed(() => {
@@ -299,9 +241,22 @@ const closeModal = () => {
   formData.value = {
     name: '',
     description: '',
-    parentId: null,
-    sort: 0,
-    status: true
+    parentId: undefined,
+    sortOrder: 0,
+    enabled: true
+  }
+}
+
+// 加载分类树
+const loadCategories = async () => {
+  try {
+    loading.value = true
+    categories.value = await categoryService.getCategoryTree()
+  } catch (err) {
+    error('加载分类列表失败')
+    console.error('Load categories error:', err)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -309,15 +264,17 @@ const closeModal = () => {
 const submitForm = async () => {
   try {
     if (showCreateModal.value) {
-      // TODO: 调用创建API
-      console.log('Create category:', formData.value)
-    } else {
-      // TODO: 调用更新API
-      console.log('Update category:', editingCategory.value?.id, formData.value)
+      await categoryService.createCategory(formData.value)
+      success('分类创建成功')
+    } else if (editingCategory.value) {
+      await categoryService.updateCategory(editingCategory.value.id, formData.value)
+      success('分类更新成功')
     }
     closeModal()
-  } catch (error) {
-    console.error('Failed to save category:', error)
+    await loadCategories()
+  } catch (err) {
+    error(showCreateModal.value ? '创建分类失败' : '更新分类失败')
+    console.error('Save category error:', err)
   }
 }
 
@@ -328,45 +285,63 @@ const editCategory = (category: Category) => {
     name: category.name,
     description: category.description,
     parentId: category.parentId,
-    sort: category.sort,
-    status: category.status === 'active'
+    sortOrder: category.sortOrder,
+    enabled: category.enabled
   }
   showEditModal.value = true
 }
 
 // 删除分类
 const deleteCategory = async (category: Category) => {
-  if (confirm(`确定要删除分类"${category.name}"吗？`)) {
+  // 先检查是否可以删除
+  try {
+    const canDelete = await categoryService.canDeleteCategory(category.id)
+    if (!canDelete) {
+      error('该分类下还有题目或子分类，无法删除')
+      return
+    }
+  } catch (err) {
+    error('检查删除权限失败')
+    return
+  }
+
+  if (confirm(`确定要删除分类"${category.name}"吗？此操作不可撤销。`)) {
     try {
-      // TODO: 调用删除API
-      console.log('Delete category:', category.id)
-    } catch (error) {
-      console.error('Failed to delete category:', error)
+      await categoryService.deleteCategory(category.id)
+      success('分类删除成功')
+      await loadCategories()
+    } catch (err) {
+      error('删除分类失败')
+      console.error('Delete category error:', err)
     }
   }
 }
 
 // 移动分类
-const moveCategory = async (category: Category, direction: 'up' | 'down') => {
+const moveCategory = async (category: Category, newParentId?: number) => {
   try {
-    // TODO: 调用移动API
-    console.log('Move category:', category.id, direction)
-  } catch (error) {
-    console.error('Failed to move category:', error)
+    await categoryService.moveCategory(category.id, newParentId)
+    success('分类移动成功')
+    await loadCategories()
+  } catch (err) {
+    error('移动分类失败')
+    console.error('Move category error:', err)
   }
 }
 
 // 切换分类状态
 const toggleCategoryStatus = async (category: Category) => {
   try {
-    // TODO: 调用状态切换API
-    console.log('Toggle category status:', category.id)
-  } catch (error) {
-    console.error('Failed to toggle category status:', error)
+    await categoryService.batchUpdateCategoryStatus([category.id], !category.enabled)
+    success(`分类已${!category.enabled ? '启用' : '禁用'}`)
+    await loadCategories()
+  } catch (err) {
+    error('切换分类状态失败')
+    console.error('Toggle category status error:', err)
   }
 }
 
 onMounted(() => {
-  // TODO: 加载分类树
+  loadCategories()
 })
 </script>

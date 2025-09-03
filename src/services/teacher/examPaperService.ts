@@ -1,4 +1,4 @@
-import { apiClient } from '../api'
+import { apiClient } from '../api.ts'
 
 export interface ExamPaper {
   id: number
@@ -87,6 +87,18 @@ export const examPaperService = {
     return response.data
   },
 
+  // 获取试卷列表 (别名)
+  async getExamPaperList(params: ExamPaperListParams = {}): Promise<{ data: { items: ExamPaper[], totalPages: number, totalItems: number } }> {
+    const response = await this.getExamPapers(params)
+    return {
+      data: {
+        items: response.content,
+        totalPages: response.totalPages,
+        totalItems: response.totalElements
+      }
+    }
+  },
+
   // 获取试卷详情
   async getExamPaper(id: number): Promise<ExamPaperDetail> {
     const response = await apiClient.get(`/api/exam-papers/${id}`)
@@ -173,3 +185,6 @@ export const examPaperService = {
     await apiClient.put(`/api/exam-papers/${id}/questions/batch/scores`, { scoreUpdates })
   }
 }
+
+// 导出别名以保持兼容性
+export const teacherExamPaperService = examPaperService

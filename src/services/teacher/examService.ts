@@ -1,4 +1,4 @@
-import { apiClient } from '../api'
+import { apiClient } from '../api.ts'
 
 export interface Exam {
   id: number
@@ -68,6 +68,18 @@ export const examService = {
     return response.data
   },
 
+  // 获取考试列表 (别名)
+  async getExamList(params: ExamListParams = {}): Promise<{ data: { items: Exam[], totalPages: number, totalItems: number } }> {
+    const response = await this.getExams(params)
+    return {
+      data: {
+        items: response.content,
+        totalPages: response.totalPages,
+        totalItems: response.totalElements
+      }
+    }
+  },
+
   // 获取考试详情
   async getExam(id: number): Promise<Exam> {
     const response = await apiClient.get(`/api/teacher/exams/${id}`)
@@ -131,3 +143,6 @@ export const examService = {
     return response.data
   }
 }
+
+// 导出别名以保持兼容性
+export const teacherExamService = examService

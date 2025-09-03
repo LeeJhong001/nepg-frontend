@@ -274,12 +274,14 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { teacherQuestionService, type Question, type QuestionListParams } from '../../../services/teacher/questionService'
+import { teacherQuestionService, type Question, type QuestionListParams, type QuestionRequest } from '../../../services/teacher/questionService'
 import { categoryService, type Category } from '../../../services/teacher/categoryService'
 import { useNotification } from '../../../composables/useNotification'
 
