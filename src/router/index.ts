@@ -102,12 +102,96 @@ const router = createRouter({
         {
           path: '',
           name: 'teacher-dashboard',
-          component: () => import('../views/teacher/index.vue'),
+          component: () => import('../views/teacher/Dashboard.vue'),
+        },
+        // 考试管理
+        {
+          path: 'exams',
+          name: 'teacher-exams',
+          component: () => import('../views/teacher/exams/ExamList.vue'),
         },
         {
-          path: 'courses',
-          name: 'teacher-courses',
-          component: () => import('../views/teacher/CourseManagement.vue'),
+          path: 'exams/create',
+          name: 'teacher-exams-create',
+          component: () => import('../views/teacher/exams/ExamForm.vue'),
+        },
+        {
+          path: 'exams/:id',
+          name: 'teacher-exams-detail',
+          component: () => import('../views/teacher/exams/ExamDetail.vue'),
+        },
+        {
+          path: 'exams/:id/edit',
+          name: 'teacher-exams-edit',
+          component: () => import('../views/teacher/exams/ExamForm.vue'),
+        },
+        {
+          path: 'exams/:id/statistics',
+          name: 'teacher-exams-statistics',
+          component: () => import('../views/teacher/exams/ExamStatistics.vue'),
+        },
+        // 试卷管理
+        {
+          path: 'exam-papers',
+          name: 'teacher-exam-papers',
+          component: () => import('../views/teacher/exam-papers/ExamPaperList.vue'),
+        },
+        {
+          path: 'exam-papers/create',
+          name: 'teacher-exam-papers-create',
+          component: () => import('../views/teacher/exam-papers/ExamPaperForm.vue'),
+        },
+        {
+          path: 'exam-papers/generate',
+          name: 'teacher-exam-papers-generate',
+          component: () => import('../views/teacher/exam-papers/ExamPaperGenerate.vue'),
+        },
+        {
+          path: 'exam-papers/:id',
+          name: 'teacher-exam-papers-detail',
+          component: () => import('../views/teacher/exam-papers/ExamPaperDetail.vue'),
+        },
+        {
+          path: 'exam-papers/:id/edit',
+          name: 'teacher-exam-papers-edit',
+          component: () => import('../views/teacher/exam-papers/ExamPaperForm.vue'),
+        },
+        {
+          path: 'exam-papers/:id/preview',
+          name: 'teacher-exam-papers-preview',
+          component: () => import('../views/teacher/exam-papers/ExamPaperPreview.vue'),
+        },
+        {
+          path: 'exam-papers/:id/questions',
+          name: 'teacher-exam-papers-questions',
+          component: () => import('../views/teacher/exam-papers/ExamPaperQuestions.vue'),
+        },
+        // 题库管理
+        {
+          path: 'questions',
+          name: 'teacher-questions',
+          component: () => import('../views/teacher/questions/QuestionList.vue'),
+        },
+        {
+          path: 'questions/create',
+          name: 'teacher-questions-create',
+          component: () => import('../views/teacher/questions/QuestionForm.vue'),
+        },
+        {
+          path: 'questions/:id',
+          name: 'teacher-questions-detail',
+          component: () => import('../views/teacher/questions/QuestionDetail.vue'),
+        },
+        {
+          path: 'questions/:id/edit',
+          name: 'teacher-questions-edit',
+          component: () => import('../views/teacher/questions/QuestionForm.vue'),
+        },
+        // 分类管理
+        {
+          path: 'categories',
+          name: 'teacher-categories',
+          component: () => import('../views/teacher/categories/CategoryList.vue'),
         },
       ],
     },

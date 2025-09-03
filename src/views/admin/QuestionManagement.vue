@@ -111,13 +111,6 @@
             <ArrowPathIcon class="w-4 h-4" />
           </button>
           <button
-            @click="handleRandomQuestions"
-            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <SparklesIcon class="w-4 h-4" />
-            随机题目
-          </button>
-          <button
             @click="handleCreate"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
