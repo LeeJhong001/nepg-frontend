@@ -274,15 +274,25 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { teacherQuestionService, type Question, type QuestionListParams } from '../../../services/teacher/questionService'
+import { categoryService, type Category } from '../../../services/teacher/categoryService'
+import { useNotification } from '../../../composables/useNotification'
 
 const router = useRouter()
+const { success: showSuccess, error: showError } = useNotification()
+
+// 响应式数据
+const questions = ref<Question[]>([])
+const categories = ref<Category[]>([])
+const loading = ref(false)
+const totalElements = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 // 筛选条件
 const filters = ref({
@@ -294,40 +304,6 @@ const filters = ref({
 
 // 选中的题目
 const selectedQuestions = ref<number[]>([])
-
-// 题目列表
-const questions = ref([
-  {
-    id: 1,
-    content: '下列哪个选项是正确的数学公式？',
-    type: 'single',
-    category: '数学',
-    difficulty: 'medium',
-    score: 5,
-    options: ['A. 2+2=5', 'B. 3×3=9', 'C. 4÷2=3', 'D. 5-1=3'],
-    createdAt: '2024-01-15T10:00:00'
-  },
-  {
-    id: 2,
-    content: '请判断：地球是圆的。',
-    type: 'judge',
-    category: '地理',
-    difficulty: 'easy',
-    score: 3,
-    options: [],
-    createdAt: '2024-01-14T14:30:00'
-  },
-  {
-    id: 3,
-    content: '请选择所有正确的英语语法规则：',
-    type: 'multiple',
-    category: '英语',
-    difficulty: 'hard',
-    score: 8,
-    options: ['A. 主语+谓语+宾语', 'B. 形容词修饰名词', 'C. 副词修饰动词', 'D. 介词后接名词'],
-    createdAt: '2024-01-13T09:15:00'
-  }
-])
 
 // 分页
 const pagination = ref({
@@ -518,12 +494,14 @@ const copyQuestion = async (id: number) => {
 }
 
 const deleteQuestion = async (id: number) => {
-  if (confirm('确定要删除这个题目吗？')) {
+  if (confirm('确定要删除这道题目吗？')) {
     try {
-      // TODO: 调用删除API
-      console.log('Delete question:', id)
+      await teacherQuestionService.deleteQuestion(id)
+      showSuccess('题目删除成功')
+      await loadQuestions()
     } catch (error) {
       console.error('Failed to delete question:', error)
+      showError('题目删除失败')
     }
   }
 }
@@ -549,19 +527,48 @@ const batchDelete = async () => {
   }
 }
 
-// 导入导出
-const importQuestions = () => {
-  // TODO: 实现题目导入功能
-  console.log('Import questions')
+// 加载题目列表
+const loadQuestions = async () => {
+  try {
+    loading.value = true
+    const params: QuestionListParams = {
+      page: currentPage.value,
+      size: pageSize.value,
+      keyword: filters.value.search || undefined,
+      categoryId: filters.value.category,
+      type: filters.value.type || undefined,
+      difficulty: filters.value.difficulty
+    }
+    
+    const response = await teacherQuestionService.getQuestions(params)
+    questions.value = response.content
+    totalElements.value = response.totalElements
+  } catch (error) {
+    console.error('Failed to load questions:', error)
+    showError('加载题目列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 
-const exportQuestions = () => {
-  // TODO: 实现题目导出功能
-  console.log('Export questions')
+// 加载分类列表
+const loadCategories = async () => {
+  try {
+    categories.value = await categoryService.getCategories()
+  } catch (error) {
+    console.error('Failed to load categories:', error)
+  }
+}
+
+// 分页处理
+const handlePageChange = (page: number) => {
+  currentPage.value = page
+  loadQuestions()
 }
 
 onMounted(() => {
-  // TODO: 加载题目列表
+  loadQuestions()
+  loadCategories()
 })
 </script>
 

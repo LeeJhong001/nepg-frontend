@@ -5,7 +5,7 @@ import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 
-import Teacher from '../views/teacher/index.vue'
+import TeacherLayout from '../views/teacher/TeacherLayout.vue'
 import Student from '../views/student/index.vue'
 
 const router = createRouter({
@@ -96,7 +96,7 @@ const router = createRouter({
     {
       path: '/teacher',
       name: 'teacher',
-      component: Teacher,
+      component: TeacherLayout,
       meta: { requiresAuth: true, requiredRole: UserRole.TEACHER },
       children: [
         {
