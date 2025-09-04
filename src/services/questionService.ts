@@ -15,6 +15,7 @@ import type {
   BatchUpdateCategoryRequest,
   DifficultyDistributionRequest,
   QuestionUsageHistory,
+  QuestionOption,
   ApiResponse
 } from '../types/question'
 import { QuestionStatus } from '../types/question'
@@ -83,6 +84,21 @@ export class QuestionService {
     }
   }
 
+  // 辅助函数：根据用户ID获取用户名称
+  private static async getUserName(userId: number | null): Promise<string> {
+    if (!userId) return '未知用户'
+    
+    try {
+      // 使用用户服务获取用户信息
+      const { UserService } = await import('./userService')
+      const user = await UserService.getUserById(userId)
+      return user.realName || user.username || '未知用户'
+    } catch (error) {
+      console.error('Failed to get user name:', error)
+      return '未知用户'
+    }
+  }
+
   // 获取题目列表
   static async getQuestionList(params: QuestionQueryParams): Promise<QuestionListResponse> {
     try {
@@ -93,6 +109,7 @@ export class QuestionService {
       // 转换后端数据格式为前端期望的格式
       const mappedRecords = await Promise.all((response.records || []).map(async (item: any) => {
         const categoryName = item.categoryName || await this.getCategoryName(item.categoryId)
+        const createdByName = item.createdByName || await this.getUserName(item.createdById)
         return {
           id: item.id,
           title: item.title,
@@ -102,7 +119,7 @@ export class QuestionService {
           categoryName: categoryName,
           score: item.score,
           status: QuestionStatus.ACTIVE, // 后端未返回状态，设置默认值
-          createdBy: item.createdByName || item.createdById || '未知',
+          createdBy: createdByName,
           createdAt: item.createdAt
         }
       }))
@@ -129,8 +146,26 @@ export class QuestionService {
       const response = await api.get(`/questions/${id}`) as any
       console.log('Question detail response:', response)
       
-      // 获取分类名称
+      // 获取分类名称和创建者名称
       const categoryName = response.categoryName || await this.getCategoryName(response.categoryId)
+      const createdByName = response.createdByName || await this.getUserName(response.createdById)
+      
+      // 解析选项字段
+      let parsedOptions: QuestionOption[] | undefined = undefined
+      if (response.options && typeof response.options === 'string') {
+        try {
+          const optionsArray = JSON.parse(response.options)
+          if (Array.isArray(optionsArray)) {
+            parsedOptions = optionsArray.map((option, index) => ({
+              content: option,
+              isCorrect: response.answer === String.fromCharCode(65 + index), // A, B, C, D...
+              order: index + 1
+            }))
+          }
+        } catch (error) {
+          console.error('Failed to parse options:', error)
+        }
+      }
       
       // 转换后端字段名为前端期望的格式
       return {
@@ -144,9 +179,9 @@ export class QuestionService {
         score: response.score,
         correctAnswer: response.answer || '', // 后端字段名是answer
         explanation: response.analysis || '', // 后端字段名是analysis
-        options: response.options, // 这个字段名一致
+        options: parsedOptions, // 解析后的选项数组
         status: QuestionStatus.ACTIVE, // 默认状态
-        createdBy: response.createdByName || response.createdById || '未知',
+        createdBy: createdByName,
         createdAt: response.createdAt,
         updatedAt: response.updatedAt
       }

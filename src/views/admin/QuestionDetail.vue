@@ -54,7 +54,7 @@
           </div>
           <div>
             <div class="text-sm font-medium text-gray-500 mb-1">题目分类</div>
-            <div class="text-gray-900">{{ question.categoryName }}</div>
+            <div class="text-gray-900">{{ question.categoryName || '未分类' }}</div>
           </div>
           <div>
             <div class="text-sm font-medium text-gray-500 mb-1">题目分值</div>
@@ -69,7 +69,7 @@
           </div>
           <div>
             <div class="text-sm font-medium text-gray-500 mb-1">创建者</div>
-            <div class="text-gray-900">{{ question.createdBy || '-' }}</div>
+            <div class="text-gray-900">{{ question.createdBy || '未知用户' }}</div>
           </div>
           <div>
             <div class="text-sm font-medium text-gray-500 mb-1">创建时间</div>
@@ -225,8 +225,7 @@ const historyLoading = ref(false)
 
 // 题型标签
 const questionTypeLabels: Record<QuestionType, string> = {
-  SINGLE_CHOICE: '单选题',
-  MULTIPLE_CHOICE: '多选题',
+  CHOICE: '选择题',
   FILL_BLANK: '填空题',
   SHORT_ANSWER: '简答题',
   PROOF: '证明题'
@@ -297,8 +296,7 @@ const formatDate = (dateString?: string) => {
 
 const getTypeBadgeClass = (type: QuestionType) => {
   const classes = {
-    SINGLE_CHOICE: 'bg-blue-100 text-blue-800',
-    MULTIPLE_CHOICE: 'bg-purple-100 text-purple-800',
+    CHOICE: 'bg-blue-100 text-blue-800',
     FILL_BLANK: 'bg-green-100 text-green-800',
     SHORT_ANSWER: 'bg-yellow-100 text-yellow-800',
     PROOF: 'bg-red-100 text-red-800'
