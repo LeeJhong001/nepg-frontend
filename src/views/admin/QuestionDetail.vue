@@ -88,66 +88,7 @@
         <QuestionPreview :question="question" />
       </div>
 
-      <!-- 使用记录 -->
-      <div class="bg-white rounded-lg shadow-sm p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">使用记录</h2>
-          <button
-            @click="handleRefreshHistory"
-            class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors"
-          >
-            <ArrowPathIcon class="w-4 h-4 inline mr-1" />
-            刷新
-          </button>
-        </div>
 
-        <div v-if="historyLoading" class="text-center py-8">
-          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-          <p class="text-gray-500 mt-2">加载使用记录中...</p>
-        </div>
-
-        <div v-else-if="usageHistory.length === 0" class="text-center py-8">
-          <ClockIcon class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p class="text-gray-500">暂无使用记录</p>
-        </div>
-
-        <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用类型</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">得分</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">正确性</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用时间</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-              <tr v-for="record in usageHistory" :key="record.id" class="hover:bg-gray-50">
-                <td class="px-4 py-3 text-sm text-gray-900">{{ record.userName }}</td>
-                <td class="px-4 py-3">
-                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                        :class="getUsageTypeBadgeClass(record.usageType)">
-                    {{ usageTypeLabels[record.usageType] }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-sm text-gray-900">
-                  {{ record.score !== undefined ? record.score + '分' : '-' }}
-                </td>
-                <td class="px-4 py-3">
-                  <span v-if="record.isCorrect !== undefined" 
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                        :class="record.isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
-                    {{ record.isCorrect ? '正确' : '错误' }}
-                  </span>
-                  <span v-else class="text-gray-400">-</span>
-                </td>
-                <td class="px-4 py-3 text-sm text-gray-900">{{ formatDate(record.usedAt) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       <!-- 操作历史 -->
       <div class="bg-white rounded-lg shadow-sm p-6">
