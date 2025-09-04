@@ -50,9 +50,10 @@
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">请选择题目类型</option>
-              <option v-for="(label, type) in questionTypeLabels" :key="type" :value="type">
-                {{ label }}
-              </option>
+              <option value="CHOICE">选择题</option>
+              <option value="FILL_BLANK">填空题</option>
+              <option value="SHORT_ANSWER">简答题</option>
+              <option value="PROOF">证明题</option>
             </select>
           </div>
 
@@ -67,9 +68,9 @@
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">请选择难度等级</option>
-              <option v-for="(label, level) in difficultyLabels" :key="level" :value="level">
-                {{ label }}
-              </option>
+              <option value="1">简单</option>
+              <option value="2">中等</option>
+              <option value="3">困难</option>
             </select>
           </div>
 

@@ -101,8 +101,12 @@ export const categoryService = {
 
   // 移动分类到新的父分类下
   async moveCategory(id: number, newParentId?: number): Promise<Category> {
-    const response = await apiClient.put(`/api/teacher/categories/${id}/move`, {}, {
-      params: { newParentId }
+    const params: any = {}
+    if (newParentId !== undefined) {
+      params.newParentId = newParentId
+    }
+    const response = await apiClient.put(`/api/teacher/categories/${id}/move`, null, {
+      params
     })
     return response.data
   },

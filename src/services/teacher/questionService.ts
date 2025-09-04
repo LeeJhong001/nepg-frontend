@@ -95,13 +95,30 @@ export const questionService = {
   // 根据ID获取题目详情
   async getQuestionById(id: number): Promise<QuestionResponse> {
     const response = await apiClient.get(`/api/teacher/questions/${id}`)
-    return response.data
+    const data = response.data
+    
+    // 解析选项字符串为数组
+    if (data.options) {
+      data.options = JSON.parse(data.options)
+    }
+    
+    return data
   },
 
   // 分页查询题目
   async getQuestions(params: QuestionListParams = {}): Promise<QuestionListResponse> {
     const response = await apiClient.get('/api/teacher/questions', { params })
-    return response.data
+    const data = response.data
+    
+    // 解析选项字符串为数组
+    if (data.records) {
+      data.records = data.records.map((question: any) => ({
+        ...question,
+        options: question.options ? JSON.parse(question.options) : []
+      }))
+    }
+    
+    return data
   },
 
   // 获取题目列表 (别名)
@@ -185,7 +202,7 @@ export const questionService = {
 
   // 验证题目答案
   async validateAnswer(id: number, userAnswer: string): Promise<any> {
-    const response = await apiClient.post(`/api/teacher/questions/${id}/validate`, null, {
+    const response = await apiClient.post(`/api/teacher/questions/${id}/validate`, {}, {
       params: { userAnswer }
     })
     return response.data

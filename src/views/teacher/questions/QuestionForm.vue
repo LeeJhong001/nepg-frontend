@@ -27,11 +27,10 @@
                 @change="onTypeChange"
                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               >
-                <option value="single">单选题</option>
-                <option value="multiple">多选题</option>
-                <option value="judge">判断题</option>
-                <option value="fill">填空题</option>
-                <option value="essay">问答题</option>
+                <option value="CHOICE">选择题</option>
+                <option value="FILL_BLANK">填空题</option>
+                <option value="SHORT_ANSWER">简答题</option>
+                <option value="PROOF">证明题</option>
               </select>
             </div>
             <div>
@@ -52,9 +51,9 @@
                 v-model="formData.difficulty"
                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               >
-                <option value="easy">简单</option>
-                <option value="medium">中等</option>
-                <option value="hard">困难</option>
+                <option value="1">简单</option>
+                <option value="2">中等</option>
+                <option value="3">困难</option>
               </select>
             </div>
           </div>
@@ -257,7 +256,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-700">答案解析</label>
             <textarea
-              v-model="formData.explanation"
+              v-model="formData.analysis"
               rows="3"
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               placeholder="请输入答案解析（可选）"
@@ -296,18 +295,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { teacherQuestionService } from '../../../services/teacher/questionService'
+import { categoryService } from '../../../services/teacher/categoryService'
+import { useNotification } from '../../../composables/useNotification'
 
 const route = useRoute()
 const router = useRouter()
+const { success: showSuccess, error: showError } = useNotification()
 
 const isEdit = computed(() => !!route.params.id)
 const questionId = computed(() => route.params.id as string)
 
 // 表单数据
 const formData = ref({
-  type: 'single',
+  type: 'CHOICE',
   categoryId: null as number | null,
-  difficulty: 'medium',
+  difficulty: '2',
   score: 5,
   tags: '',
   content: '',
@@ -317,15 +320,13 @@ const formData = ref({
   blankCount: 1,
   fillAnswers: [''],
   referenceAnswer: '',
-  explanation: ''
+  analysis: '',
+  title: '',
+  answer: ''
 })
 
 // 分类列表
-const categories = ref([
-  { id: 1, name: '数学' },
-  { id: 2, name: '语文' },
-  { id: 3, name: '英语' }
-])
+const categories = ref([])
 
 // 监听填空数量变化
 watch(() => formData.value.blankCount, (newCount) => {
@@ -341,18 +342,19 @@ watch(() => formData.value.blankCount, (newCount) => {
   }
 })
 
-// 题目类型改变
+// 根据类型重置表单
 const onTypeChange = () => {
   // 重置相关字段
-  formData.value.options = ['', '']
+  formData.value.options = []
   formData.value.correctAnswer = null
   formData.value.correctAnswers = []
+  formData.value.judgeAnswer = false
   formData.value.blankCount = 1
   formData.value.fillAnswers = ['']
   formData.value.referenceAnswer = ''
   
   // 根据类型设置默认选项
-  if (formData.value.type === 'single' || formData.value.type === 'multiple') {
+  if (formData.value.type === 'CHOICE') {
     formData.value.options = ['', '', '', '']
   }
 }
@@ -405,30 +407,63 @@ const goBack = () => {
 // 提交表单
 const submitForm = async () => {
   try {
-    if (isEdit.value) {
-      // TODO: 调用更新API
-      console.log('Update question:', questionId.value, formData.value)
+    const requestData = {
+      title: formData.value.title,
+      content: formData.value.content,
+      type: formData.value.type,
+      difficulty: Number(formData.value.difficulty),
+      categoryId: formData.value.categoryId ? Number(formData.value.categoryId) : undefined,
+      answer: formData.value.answer,
+      analysis: formData.value.analysis,
+      options: formData.value.type === 'CHOICE' ? 
+        JSON.stringify(formData.value.options?.filter(opt => opt.trim()) || []) : 
+        undefined,
+      score: Number(formData.value.score)
+    }
+    
+    if (isEdit.value && questionId.value) {
+      await teacherQuestionService.updateQuestion(Number(questionId.value), requestData)
+      showSuccess('题目更新成功')
     } else {
-      // TODO: 调用创建API
-      console.log('Create question:', formData.value)
+      await teacherQuestionService.createQuestion(requestData)
+      showSuccess('题目创建成功')
     }
     goBack()
   } catch (error) {
     console.error('Failed to submit form:', error)
+    showError('保存失败：' + (error as Error).message)
   }
 }
 
 // 加载数据
 const loadData = async () => {
   try {
-    // TODO: 加载分类列表
+    // 加载分类列表
+    const categoryResponse = await categoryService.getCategories()
+    categories.value = categoryResponse.records || []
     
-    if (isEdit.value) {
-      // TODO: 加载题目详情
-      console.log('Load question:', questionId.value)
+    // 如果是编辑模式，加载题目详情
+    if (isEdit.value && questionId.value) {
+      const questionResponse = await teacherQuestionService.getQuestionById(Number(questionId.value))
+      
+      // 填充表单数据
+      formData.value = {
+        ...formData.value,
+        title: questionResponse.title,
+        content: questionResponse.content,
+        type: questionResponse.type,
+        difficulty: questionResponse.difficulty.toString(),
+        categoryId: questionResponse.categoryId,
+        answer: questionResponse.answer,
+        analysis: questionResponse.analysis || '',
+        options: Array.isArray(questionResponse.options) ? questionResponse.options : 
+                 (questionResponse.options ? JSON.parse(questionResponse.options) : []),
+        score: questionResponse.score
+      }
     }
   } catch (error) {
     console.error('Failed to load data:', error)
+    showError('加载数据失败')
   }
 }
 

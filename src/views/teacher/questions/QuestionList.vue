@@ -57,11 +57,10 @@
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             >
               <option value="">全部类型</option>
-              <option value="single">单选题</option>
-              <option value="multiple">多选题</option>
-              <option value="judge">判断题</option>
-              <option value="fill">填空题</option>
-              <option value="essay">问答题</option>
+              <option value="CHOICE">选择题</option>
+              <option value="FILL_BLANK">填空题</option>
+              <option value="SHORT_ANSWER">简答题</option>
+              <option value="PROOF">证明题</option>
             </select>
           </div>
           <div>
@@ -71,9 +70,9 @@
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             >
               <option value="">全部分类</option>
-              <option value="math">数学</option>
-              <option value="chinese">语文</option>
-              <option value="english">英语</option>
+              <option v-for="category in categories" :key="category.id" :value="category.id">
+                {{ category.name }}
+              </option>
             </select>
           </div>
           <div>
@@ -83,9 +82,9 @@
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             >
               <option value="">全部难度</option>
-              <option value="easy">简单</option>
-              <option value="medium">中等</option>
-              <option value="hard">困难</option>
+              <option value="1">简单</option>
+              <option value="2">中等</option>
+              <option value="3">困难</option>
             </select>
           </div>
           <div class="flex items-end">
@@ -170,7 +169,7 @@
               </span>
             </div>
             <div class="col-span-1 text-sm text-gray-900">
-              {{ question.category }}
+              {{ getCategoryName(question.categoryId) }}
             </div>
             <div class="col-span-1">
               <span :class="getDifficultyClass(question.difficulty)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
@@ -315,25 +314,9 @@ const pagination = ref({
   totalItems: 0
 })
 
-// 筛选后的题目
-const filteredQuestions = computed(() => {
-  return questions.value.filter(question => {
-    const matchSearch = !filters.value.search || 
-      question.content.toLowerCase().includes(filters.value.search.toLowerCase())
-    
-    const matchType = !filters.value.type || question.type === filters.value.type
-    const matchCategory = !filters.value.category || question.category.includes(filters.value.category)
-    const matchDifficulty = !filters.value.difficulty || question.difficulty === filters.value.difficulty
-    
-    return matchSearch && matchType && matchCategory && matchDifficulty
-  })
-})
-
-// 分页后的题目
+// 直接使用服务器返回的题目数据（已经过滤和分页）
 const paginatedQuestions = computed(() => {
-  const start = (pagination.value.current - 1) * pagination.value.size
-  const end = start + pagination.value.size
-  return filteredQuestions.value.slice(start, end)
+  return questions.value
 })
 
 // 可见页码
@@ -359,21 +342,17 @@ const isAllSelected = computed(() => {
     paginatedQuestions.value.every(question => selectedQuestions.value.includes(question.id))
 })
 
-// 更新分页信息
+// 更新分页信息（服务器端分页）
 const updatePagination = () => {
-  pagination.value.totalItems = filteredQuestions.value.length
-  pagination.value.total = Math.ceil(filteredQuestions.value.length / pagination.value.size)
-  
-  if (pagination.value.current > pagination.value.total) {
-    pagination.value.current = Math.max(1, pagination.value.total)
-  }
+  // 分页信息已在 loadQuestions 中设置，无需额外处理
 }
 
-// 监听筛选条件变化
-watch(filteredQuestions, () => {
-  updatePagination()
+// 监听筛选条件变化，重新加载数据
+watch([() => filters.value.search, () => filters.value.type, () => filters.value.category, () => filters.value.difficulty], () => {
+  currentPage.value = 1 // 重置到第一页
+  loadQuestions()
   selectedQuestions.value = []
-}, { immediate: true })
+}, { deep: true })
 
 // 重置筛选
 const resetFilters = () => {
@@ -396,33 +375,34 @@ const toggleSelectAll = () => {
 
 // 分页操作
 const previousPage = () => {
-  if (pagination.value.current > 1) {
-    pagination.value.current--
+  if (currentPage.value > 1) {
+    currentPage.value--
+    loadQuestions()
   }
 }
 
 const nextPage = () => {
-  if (pagination.value.current < pagination.value.total) {
-    pagination.value.current++
+  if (currentPage.value < pagination.value.total) {
+    currentPage.value++
+    loadQuestions()
   }
 }
 
 const goToPage = (page: number) => {
-  pagination.value.current = page
+  currentPage.value = page
+  loadQuestions()
 }
 
 // 样式和文本函数
 const getTypeClass = (type: string) => {
   switch (type) {
-    case 'single':
+    case 'CHOICE':
       return 'bg-blue-100 text-blue-800'
-    case 'multiple':
+    case 'FILL_BLANK':
       return 'bg-green-100 text-green-800'
-    case 'judge':
-      return 'bg-yellow-100 text-yellow-800'
-    case 'fill':
+    case 'SHORT_ANSWER':
       return 'bg-purple-100 text-purple-800'
-    case 'essay':
+    case 'PROOF':
       return 'bg-red-100 text-red-800'
     default:
       return 'bg-gray-100 text-gray-800'
@@ -431,41 +411,39 @@ const getTypeClass = (type: string) => {
 
 const getTypeText = (type: string) => {
   switch (type) {
-    case 'single':
-      return '单选'
-    case 'multiple':
-      return '多选'
-    case 'judge':
-      return '判断'
-    case 'fill':
-      return '填空'
-    case 'essay':
-      return '问答'
+    case 'CHOICE':
+      return '选择题'
+    case 'FILL_BLANK':
+      return '填空题'
+    case 'SHORT_ANSWER':
+      return '简答题'
+    case 'PROOF':
+      return '证明题'
     default:
       return '未知'
   }
 }
 
-const getDifficultyClass = (difficulty: string) => {
+const getDifficultyClass = (difficulty: number) => {
   switch (difficulty) {
-    case 'easy':
+    case 1:
       return 'bg-green-100 text-green-800'
-    case 'medium':
+    case 2:
       return 'bg-yellow-100 text-yellow-800'
-    case 'hard':
+    case 3:
       return 'bg-red-100 text-red-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
 }
 
-const getDifficultyText = (difficulty: string) => {
+const getDifficultyText = (difficulty: number) => {
   switch (difficulty) {
-    case 'easy':
+    case 1:
       return '简单'
-    case 'medium':
+    case 2:
       return '中等'
-    case 'hard':
+    case 3:
       return '困难'
     default:
       return '未知'
@@ -475,6 +453,47 @@ const getDifficultyText = (difficulty: string) => {
 // 格式化日期
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('zh-CN')
+}
+
+// 获取分类名称
+const getCategoryName = (categoryId: number) => {
+  if (!categoryId) return '未分类'
+  const category = categories.value.find(cat => cat.id === categoryId)
+  return category ? category.name : `分类${categoryId}`
+}
+
+// 导入题目
+const importQuestions = () => {
+  // TODO: 实现导入功能
+  console.log('Import questions')
+}
+
+// 导出题目
+const exportQuestions = async () => {
+  try {
+    const questions = await teacherQuestionService.exportQuestions(
+      filters.value.category ? Number(filters.value.category) : undefined,
+      filters.value.type || undefined,
+      filters.value.difficulty ? Number(filters.value.difficulty) : undefined
+    )
+    
+    // 创建下载链接
+    const dataStr = JSON.stringify(questions, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `questions_${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    showSuccess('题目导出成功')
+  } catch (error) {
+    console.error('Failed to export questions:', error)
+    showError('题目导出失败')
+  }
 }
 
 // 题目操作
@@ -488,10 +507,12 @@ const editQuestion = (id: number) => {
 
 const copyQuestion = async (id: number) => {
   try {
-    // TODO: 调用复制API
-    console.log('Copy question:', id)
+    await teacherQuestionService.copyQuestion(id)
+    showSuccess('题目复制成功')
+    await loadQuestions()
   } catch (error) {
     console.error('Failed to copy question:', error)
+    showError('题目复制失败')
   }
 }
 
@@ -511,20 +532,28 @@ const deleteQuestion = async (id: number) => {
 // 批量操作
 const batchCopy = async () => {
   try {
-    // TODO: 调用批量复制API
-    console.log('Batch copy:', selectedQuestions.value)
+    for (const id of selectedQuestions.value) {
+      await teacherQuestionService.copyQuestion(id)
+    }
+    showSuccess(`成功复制 ${selectedQuestions.value.length} 道题目`)
+    selectedQuestions.value = []
+    await loadQuestions()
   } catch (error) {
     console.error('Failed to batch copy:', error)
+    showError('批量复制失败')
   }
 }
 
 const batchDelete = async () => {
   if (confirm(`确定要删除选中的 ${selectedQuestions.value.length} 个题目吗？`)) {
     try {
-      // TODO: 调用批量删除API
-      console.log('Batch delete:', selectedQuestions.value)
+      await teacherQuestionService.batchDeleteQuestions(selectedQuestions.value)
+      showSuccess(`成功删除 ${selectedQuestions.value.length} 道题目`)
+      selectedQuestions.value = []
+      await loadQuestions()
     } catch (error) {
       console.error('Failed to batch delete:', error)
+      showError('批量删除失败')
     }
   }
 }
@@ -537,14 +566,20 @@ const loadQuestions = async () => {
       page: currentPage.value,
       size: pageSize.value,
       keyword: filters.value.search || undefined,
-      categoryId: filters.value.category,
+      categoryId: filters.value.category ? Number(filters.value.category) : undefined,
       type: filters.value.type || undefined,
-      difficulty: filters.value.difficulty
+      difficulty: filters.value.difficulty ? Number(filters.value.difficulty) : undefined
     }
     
     const response = await teacherQuestionService.getQuestions(params)
-    questions.value = response.content
-    totalElements.value = response.totalElements
+    questions.value = response.records
+    totalElements.value = response.total
+    pagination.value = {
+      current: response.current,
+      size: response.size,
+      total: response.pages,
+      totalItems: response.total
+    }
   } catch (error) {
     console.error('Failed to load questions:', error)
     showError('加载题目列表失败')
@@ -556,9 +591,30 @@ const loadQuestions = async () => {
 // 加载分类列表
 const loadCategories = async () => {
   try {
-    categories.value = await categoryService.getCategories()
+    const categoryTree = await categoryService.getCategoryTree()
+    // 展平分类树，获取所有分类（包括子分类）
+    const flattenCategories = (cats: Category[]): Category[] => {
+      let result: Category[] = []
+      for (const cat of cats) {
+        result.push(cat)
+        if (cat.children && cat.children.length > 0) {
+          result = result.concat(flattenCategories(cat.children))
+        }
+      }
+      return result
+    }
+    categories.value = flattenCategories(categoryTree)
+    console.log('Loaded categories:', categories.value)
   } catch (error) {
     console.error('Failed to load categories:', error)
+    // 如果分类加载失败，尝试使用备用方法
+    try {
+      categories.value = await categoryService.getEnabledCategoryTree()
+      console.log('Loaded enabled categories as fallback:', categories.value)
+    } catch (fallbackError) {
+      console.error('Fallback category loading also failed:', fallbackError)
+      showError('加载分类列表失败')
+    }
   }
 }
 
