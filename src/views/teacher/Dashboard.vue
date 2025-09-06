@@ -19,7 +19,10 @@
             <div class="ml-5 w-0 flex-1">
               <dl>
                 <dt class="text-sm font-medium text-gray-500 truncate">我的考试</dt>
-                <dd class="text-lg font-medium text-gray-900">{{ stats.examCount }}</dd>
+                <dd class="text-lg font-medium text-gray-900">
+                  <span v-if="loading" class="animate-pulse bg-gray-200 h-6 w-8 rounded inline-block"></span>
+                  <span v-else>{{ stats.examCount }}</span>
+                </dd>
               </dl>
             </div>
           </div>
@@ -135,23 +138,6 @@
             <p class="mt-2 text-sm text-gray-500">创建新的题目</p>
           </div>
         </button>
-
-        <button
-          @click="$router.push('/teacher/categories/create')"
-          class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-purple-500 rounded-lg shadow hover:shadow-md transition-shadow"
-        >
-          <div>
-            <span class="rounded-lg inline-flex p-3 bg-purple-50 text-purple-600 ring-4 ring-white">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-4H3m16 8H5m14 4H3" />
-              </svg>
-            </span>
-          </div>
-          <div class="mt-4">
-            <h3 class="text-lg font-medium text-gray-900">管理分类</h3>
-            <p class="mt-2 text-sm text-gray-500">组织题目分类</p>
-          </div>
-        </button>
       </div>
     </div>
 
@@ -207,6 +193,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { teacherQuestionService } from '../../services/teacher/questionService'
+import { teacherExamService } from '../../services/teacher/examService'
+import { teacherExamPaperService } from '../../services/teacher/examPaperService'
+import { useNotification } from '../../composables/useNotification'
+
+const { error: showError } = useNotification()
 
 // 统计数据
 const stats = ref({
@@ -217,18 +209,13 @@ const stats = ref({
 })
 
 // 最近考试
-const recentExams = ref([
-  { id: 1, title: '期中考试', date: '2024-01-15', status: '已发布' },
-  { id: 2, title: '单元测试', date: '2024-01-10', status: '草稿' },
-  { id: 3, title: '期末考试', date: '2024-01-05', status: '已归档' }
-])
+const recentExams = ref([])
 
 // 最近试卷
-const recentPapers = ref([
-  { id: 1, title: '数学期中试卷', questionCount: 20 },
-  { id: 2, title: '语文阅读理解', questionCount: 15 },
-  { id: 3, title: '英语听力测试', questionCount: 25 }
-])
+const recentPapers = ref([])
+
+// 加载状态
+const loading = ref(false)
 
 // 获取状态样式
 const getStatusClass = (status: string) => {
@@ -247,19 +234,92 @@ const getStatusClass = (status: string) => {
 // 加载统计数据
 const loadStats = async () => {
   try {
-    // TODO: 调用API获取统计数据
+    loading.value = true
+    console.log('Loading dashboard statistics...')
+    
+    // 并行加载所有统计数据
+    const [questionStats, examStats, paperStats] = await Promise.all([
+      teacherQuestionService.getQuestionList({ page: 1, size: 1 }),
+      teacherExamService.getExamList({ page: 1, size: 1 }),
+      teacherExamPaperService.getExamPaperList({ page: 1, size: 1 })
+    ])
+    
     stats.value = {
-      examCount: 8,
-      paperCount: 15,
-      questionCount: 120,
-      studentCount: 156
+      examCount: examStats.data?.totalItems || 0,
+      paperCount: paperStats.data?.totalItems || 0,
+      questionCount: questionStats.data?.totalItems || 0,
+      studentCount: 0 // TODO: 需要学生统计API
     }
+    
+    console.log('Dashboard statistics loaded:', stats.value)
   } catch (error) {
     console.error('Failed to load stats:', error)
+    showError('加载统计数据失败')
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(() => {
-  loadStats()
+// 加载最近考试
+const loadRecentExams = async () => {
+  try {
+    const response = await teacherExamService.getExamList({ 
+      page: 1, 
+      size: 5
+    })
+    
+    recentExams.value = response.data?.items?.map(exam => ({
+      id: exam.id,
+      title: exam.title,
+      date: new Date(exam.createdAt).toLocaleDateString('zh-CN'),
+      status: getExamStatusText(exam.status)
+    })) || []
+    
+    console.log('Recent exams loaded:', recentExams.value)
+  } catch (error) {
+    console.error('Failed to load recent exams:', error)
+  }
+}
+
+// 加载最近试卷
+const loadRecentPapers = async () => {
+  try {
+    const response = await teacherExamPaperService.getExamPaperList({ 
+      page: 1, 
+      size: 5 
+    })
+    
+    recentPapers.value = response.data?.items?.map(paper => ({
+      id: paper.id,
+      title: paper.title,
+      questionCount: paper.totalQuestions || 0
+    })) || []
+    
+    console.log('Recent papers loaded:', recentPapers.value)
+  } catch (error) {
+    console.error('Failed to load recent papers:', error)
+  }
+}
+
+// 获取考试状态文本
+const getExamStatusText = (status: string) => {
+  switch (status) {
+    case 'PUBLISHED':
+      return '已发布'
+    case 'DRAFT':
+      return '草稿'
+    case 'ARCHIVED':
+      return '已归档'
+    default:
+      return status
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([
+    loadStats(),
+    loadRecentExams(),
+    loadRecentPapers()
+  ])
 })
 </script>
