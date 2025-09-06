@@ -97,35 +97,12 @@ export const questionService = {
     const response = await apiClient.get(`/api/teacher/questions/${id}`)
     const data = response.data
     
-    console.log('Raw question response:', data)
-    
     // 解析选项字符串为数组
-    if (data.options && typeof data.options === 'string') {
-      try {
-        data.options = JSON.parse(data.options)
-      } catch (error) {
-        console.error('Failed to parse options:', error)
-        data.options = []
-      }
+    if (data.options) {
+      data.options = JSON.parse(data.options)
     }
     
-    // 确保返回的数据格式正确
-    const result = {
-      ...data,
-      title: data.title || '',
-      content: data.content || '',
-      type: data.type || 'CHOICE',
-      difficulty: data.difficulty || 1,
-      categoryId: data.categoryId || null,
-      categoryName: data.categoryName || null,
-      answer: data.answer || '',
-      analysis: data.analysis || '',
-      options: data.options || [],
-      score: data.score || 5
-    }
-    
-    console.log('Processed question response:', result)
-    return result
+    return data
   },
 
   // 分页查询题目
