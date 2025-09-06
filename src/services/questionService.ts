@@ -307,7 +307,49 @@ export class QuestionService {
       console.log('Copying question:', id)
       const response = await api.post(`/questions/${id}/copy`) as any
       console.log('Copy question response:', response)
-      return response
+      
+      // 处理API响应格式
+      const questionData = response.data || response
+      
+      // 获取分类名称和创建者名称
+      const categoryName = questionData.categoryName || await this.getCategoryName(questionData.categoryId)
+      const createdByName = questionData.createdByName || await this.getUserName(questionData.createdById)
+      
+      // 解析选项字段
+      let parsedOptions: QuestionOption[] | undefined = undefined
+      if (questionData.options && typeof questionData.options === 'string') {
+        try {
+          const optionsArray = JSON.parse(questionData.options)
+          if (Array.isArray(optionsArray)) {
+            parsedOptions = optionsArray.map((option, index) => ({
+              content: option,
+              isCorrect: questionData.answer === String.fromCharCode(65 + index), // A, B, C, D...
+              order: index + 1
+            }))
+          }
+        } catch (error) {
+          console.error('Failed to parse options:', error)
+        }
+      }
+      
+      // 转换后端字段名为前端期望的格式
+      return {
+        id: questionData.id,
+        title: questionData.title,
+        content: questionData.content,
+        type: questionData.type,
+        difficulty: questionData.difficulty,
+        categoryId: questionData.categoryId,
+        categoryName: categoryName,
+        score: questionData.score,
+        correctAnswer: questionData.answer || '', // 后端字段名是answer
+        explanation: questionData.analysis || '', // 后端字段名是analysis
+        options: parsedOptions, // 解析后的选项数组
+        status: QuestionStatus.ACTIVE, // 默认状态
+        createdBy: createdByName,
+        createdAt: questionData.createdAt,
+        updatedAt: questionData.updatedAt
+      }
     } catch (error) {
       console.error('Failed to copy question:', error)
       throw error
@@ -420,12 +462,23 @@ export class QuestionService {
   }
 
   // 获取题目使用记录
-  static async getQuestionUsageHistory(questionId: number): Promise<QuestionUsageHistory[]> {
+  static async getQuestionUsageHistory(questionId: number): Promise<QuestionUsageHistory> {
     try {
       console.log('Getting question usage history:', questionId)
       const response = await api.get(`/questions/${questionId}/usage-history`) as any
       console.log('Question usage history response:', response)
-      return response
+      
+      // 处理API响应格式
+      const historyData = response.data || response
+      
+      // 确保返回正确的数据结构
+      return {
+        totalUsage: historyData.totalUsage || 0,
+        examUsage: historyData.examUsage || 0,
+        practiceUsage: historyData.practiceUsage || 0,
+        lastUsed: historyData.lastUsed || null,
+        records: historyData.records || []
+      }
     } catch (error) {
       console.error('Failed to get question usage history:', error)
       throw error
