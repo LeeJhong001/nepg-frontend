@@ -59,6 +59,32 @@ api.interceptors.response.use(
 )
 
 export class QuestionService {
+  // 辅助函数：将选项数组转换为字符串格式
+  private static convertOptionsToString(options: QuestionOption[] | string | undefined): string | undefined {
+    if (!options) {
+      return undefined
+    }
+    
+    // 如果已经是字符串，直接返回
+    if (typeof options === 'string') {
+      return options
+    }
+    
+    // 如果是数组，转换为JSON字符串
+    if (Array.isArray(options)) {
+      try {
+        // 提取选项内容并转换为JSON字符串
+        const optionContents = options.map(option => option.content)
+        return JSON.stringify(optionContents)
+      } catch (error) {
+        console.error('Failed to convert options to string:', error)
+        return undefined
+      }
+    }
+    
+    return undefined
+  }
+
   // 辅助函数：根据分类ID获取分类名称
   private static async getCategoryName(categoryId: number | null): Promise<string> {
     if (!categoryId) return '未分类'
@@ -206,7 +232,7 @@ export class QuestionService {
         score: data.score,
         answer: data.correctAnswer, // 前端correctAnswer → 后端answer
         analysis: data.explanation, // 前端explanation → 后端analysis
-        options: data.options
+        options: this.convertOptionsToString(data.options) // 转换选项为字符串格式
       }
       
       console.log('Backend data being sent:', backendData)
@@ -304,55 +330,127 @@ export class QuestionService {
   // 复制题目
   static async copyQuestion(id: number): Promise<Question> {
     try {
-      console.log('Copying question:', id)
-      const response = await api.post(`/questions/${id}/copy`) as any
-      console.log('Copy question response:', response)
+      console.log('Copying question with ID:', id)
       
-      // 处理API响应格式
-      const questionData = response.data || response
-      
-      // 获取分类名称和创建者名称
-      const categoryName = questionData.categoryName || await this.getCategoryName(questionData.categoryId)
-      const createdByName = questionData.createdByName || await this.getUserName(questionData.createdById)
-      
-      // 解析选项字段
-      let parsedOptions: QuestionOption[] | undefined = undefined
-      if (questionData.options && typeof questionData.options === 'string') {
-        try {
-          const optionsArray = JSON.parse(questionData.options)
-          if (Array.isArray(optionsArray)) {
-            parsedOptions = optionsArray.map((option, index) => ({
-              content: option,
-              isCorrect: questionData.answer === String.fromCharCode(65 + index), // A, B, C, D...
-              order: index + 1
-            }))
+      // 首先尝试使用后端的复制接口
+      try {
+        console.log('Trying backend copy API:', `/questions/${id}/copy`)
+        const response = await api.post(`/questions/${id}/copy`) as any
+        console.log('Backend copy response:', response)
+        
+        if (response && response.id) {
+          // 后端复制成功，处理响应
+          const categoryName = response.categoryName || await this.getCategoryName(response.categoryId)
+          const createdByName = response.createdByName || await this.getUserName(response.createdById)
+          
+          let parsedOptions: QuestionOption[] | undefined = undefined
+          if (response.options && typeof response.options === 'string') {
+            try {
+              const optionsArray = JSON.parse(response.options)
+              if (Array.isArray(optionsArray)) {
+                parsedOptions = optionsArray.map((option, index) => ({
+                  content: option,
+                  isCorrect: response.answer === String.fromCharCode(65 + index),
+                  order: index + 1
+                }))
+              }
+            } catch (error) {
+              console.error('Failed to parse options:', error)
+            }
           }
-        } catch (error) {
-          console.error('Failed to parse options:', error)
+          
+          return {
+            id: response.id,
+            title: response.title || '',
+            content: response.content || '',
+            type: response.type,
+            difficulty: response.difficulty,
+            categoryId: response.categoryId,
+            categoryName: categoryName,
+            score: response.score || 0,
+            correctAnswer: response.answer || '',
+            explanation: response.analysis || '',
+            options: parsedOptions,
+            status: QuestionStatus.ACTIVE,
+            createdBy: createdByName,
+            createdAt: response.createdAt,
+            updatedAt: response.updatedAt
+          }
         }
+      } catch (backendError: any) {
+        console.log('Backend copy failed, trying fallback method:', backendError.message)
+        
+        // 如果后端复制接口不可用，使用客户端复制方法
+        console.log('Using client-side copy fallback')
+        
+        // 1. 获取原题目数据
+        const originalQuestion = await this.getQuestionById(id)
+        console.log('Original question:', originalQuestion)
+        
+        // 2. 创建复制的题目数据
+        const copyData: CreateQuestionRequest = {
+          title: `${originalQuestion.title} (复制)`,
+          content: originalQuestion.content,
+          type: originalQuestion.type,
+          difficulty: originalQuestion.difficulty,
+          categoryId: originalQuestion.categoryId,
+          score: originalQuestion.score,
+          correctAnswer: originalQuestion.correctAnswer,
+          explanation: originalQuestion.explanation,
+          options: originalQuestion.options // 直接传递原始选项，createQuestion方法会处理转换
+        }
+        
+        console.log('Creating copy with data:', copyData)
+        
+        // 3. 创建新题目
+        const copiedQuestion = await this.createQuestion(copyData)
+        console.log('Successfully created copy:', copiedQuestion)
+        
+        return copiedQuestion
       }
       
-      // 转换后端字段名为前端期望的格式
-      return {
-        id: questionData.id,
-        title: questionData.title,
-        content: questionData.content,
-        type: questionData.type,
-        difficulty: questionData.difficulty,
-        categoryId: questionData.categoryId,
-        categoryName: categoryName,
-        score: questionData.score,
-        correctAnswer: questionData.answer || '', // 后端字段名是answer
-        explanation: questionData.analysis || '', // 后端字段名是analysis
-        options: parsedOptions, // 解析后的选项数组
-        status: QuestionStatus.ACTIVE, // 默认状态
-        createdBy: createdByName,
-        createdAt: questionData.createdAt,
-        updatedAt: questionData.updatedAt
+      throw new Error('复制题目失败：未获取到有效的题目数据')
+      
+    } catch (error: any) {
+      console.error('Copy question error details:')
+      console.error('Error message:', error.message)
+      console.error('Error response:', error.response)
+      console.error('Error status:', error.response?.status)
+      console.error('Error data:', error.response?.data)
+      console.error('Full error:', error)
+      
+      // 检查是否是axios错误
+      if (error.response) {
+        const status = error.response.status
+        const data = error.response.data
+        
+        console.log('Response status:', status)
+        console.log('Response data:', data)
+        console.log('Response data type:', typeof data)
+        
+        if (status === 400) {
+          // 400错误通常表示后端服务问题或参数错误
+          if (data && typeof data === 'object' && data.message) {
+            throw new Error(`复制题目失败 (400): ${data.message}`)
+          } else if (data && typeof data === 'string' && data.trim()) {
+            throw new Error(`复制题目失败 (400): ${data}`)
+          } else {
+            throw new Error(`复制题目失败 (400): 后端服务返回错误，可能是题目不存在或服务未正确实现`)
+          }
+        } else if (status === 404) {
+          throw new Error(`复制题目失败 (404): 题目不存在或接口未找到`)
+        } else if (status === 500) {
+          throw new Error(`复制题目失败 (500): 服务器内部错误`)
+        } else {
+          throw new Error(`复制题目失败 (${status}): ${data || error.message}`)
+        }
+      } else if (error.request) {
+        // 请求已发出但没有收到响应
+        throw new Error('复制题目失败: 无法连接到服务器，请检查网络连接')
+      } else {
+        // 其他错误
+        throw new Error(`复制题目失败: ${error.message || '未知错误'}`)
       }
-    } catch (error) {
-      console.error('Failed to copy question:', error)
-      throw error
     }
   }
 
@@ -462,23 +560,27 @@ export class QuestionService {
   }
 
   // 获取题目使用记录
-  static async getQuestionUsageHistory(questionId: number): Promise<QuestionUsageHistory> {
+  static async getQuestionUsageHistory(questionId: number): Promise<QuestionUsageHistory[]> {
     try {
       console.log('Getting question usage history:', questionId)
       const response = await api.get(`/questions/${questionId}/usage-history`) as any
       console.log('Question usage history response:', response)
       
-      // 处理API响应格式
+      // 处理API响应格式 - 后端返回包装在ApiResponse中的数据
       const historyData = response.data || response
       
-      // 确保返回正确的数据结构
-      return {
-        totalUsage: historyData.totalUsage || 0,
-        examUsage: historyData.examUsage || 0,
-        practiceUsage: historyData.practiceUsage || 0,
-        lastUsed: historyData.lastUsed || null,
-        records: historyData.records || []
+      // 如果后端返回的是数组格式的使用记录，直接返回
+      if (Array.isArray(historyData)) {
+        return historyData
       }
+      
+      // 如果后端返回的是包含records数组的对象，返回records
+      if (historyData.records && Array.isArray(historyData.records)) {
+        return historyData.records
+      }
+      
+      // 否则返回空数组
+      return []
     } catch (error) {
       console.error('Failed to get question usage history:', error)
       throw error
