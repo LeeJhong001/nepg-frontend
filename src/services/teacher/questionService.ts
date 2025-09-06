@@ -75,15 +75,43 @@ export interface ImportResponse {
 
 // 教师端题库管理API
 export const questionService = {
+  // 辅助函数：将选项数组转换为字符串格式
+  convertOptionsToString(options: string[] | undefined): string | undefined {
+    if (!options || !Array.isArray(options)) {
+      return undefined
+    }
+    
+    try {
+      return JSON.stringify(options)
+    } catch (error) {
+      console.error('Failed to convert options to string:', error)
+      return undefined
+    }
+  },
+
   // 创建题目
   async createQuestion(data: QuestionRequest): Promise<QuestionResponse> {
-    const response = await apiClient.post('/api/teacher/questions', data)
+    // 转换选项数组为字符串格式
+    const requestData = {
+      ...data,
+      options: this.convertOptionsToString(data.options)
+    }
+    
+    console.log('Teacher create question data:', requestData)
+    const response = await apiClient.post('/api/teacher/questions', requestData)
     return response.data
   },
 
   // 更新题目
   async updateQuestion(id: number, data: QuestionRequest): Promise<QuestionResponse> {
-    const response = await apiClient.put(`/api/teacher/questions/${id}`, data)
+    // 转换选项数组为字符串格式
+    const requestData = {
+      ...data,
+      options: this.convertOptionsToString(data.options)
+    }
+    
+    console.log('Teacher update question data:', requestData)
+    const response = await apiClient.put(`/api/teacher/questions/${id}`, requestData)
     return response.data
   },
 
@@ -147,8 +175,45 @@ export const questionService = {
 
   // 复制题目
   async copyQuestion(id: number): Promise<QuestionResponse> {
-    const response = await apiClient.post(`/api/teacher/questions/${id}/copy`)
-    return response.data
+    try {
+      console.log('Copying teacher question with ID:', id)
+      const response = await apiClient.post(`/api/teacher/questions/${id}/copy`)
+      console.log('Teacher copy response:', response.data)
+      return response.data
+    } catch (error: any) {
+      console.error('Teacher copy question failed, trying fallback method:', error)
+      
+      // 如果后端复制接口失败，使用客户端复制方法
+      try {
+        // 1. 获取原题目数据
+        const originalQuestion = await this.getQuestionById(id)
+        console.log('Original teacher question:', originalQuestion)
+        
+        // 2. 创建复制的题目数据
+        const copyData: QuestionRequest = {
+          title: `${originalQuestion.title} (复制)`,
+          content: originalQuestion.content,
+          type: originalQuestion.type,
+          difficulty: originalQuestion.difficulty,
+          categoryId: originalQuestion.categoryId,
+          score: originalQuestion.score,
+          answer: originalQuestion.answer,
+          analysis: originalQuestion.analysis,
+          options: originalQuestion.options
+        }
+        
+        console.log('Creating teacher copy with data:', copyData)
+        
+        // 3. 创建新题目
+        const copiedQuestion = await this.createQuestion(copyData)
+        console.log('Successfully created teacher copy:', copiedQuestion)
+        
+        return copiedQuestion
+      } catch (fallbackError: any) {
+        console.error('Teacher fallback copy also failed:', fallbackError)
+        throw new Error(`复制题目失败: ${error.message || '未知错误'}`)
+      }
+    }
   },
 
   // 批量删除题目

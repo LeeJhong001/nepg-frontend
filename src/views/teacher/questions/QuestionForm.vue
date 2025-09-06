@@ -100,7 +100,7 @@
           </div>
 
           <!-- 选择题选项 -->
-          <div v-if="formData.type === 'single' || formData.type === 'multiple'">
+          <div v-if="formData.type === 'CHOICE'">
             <label class="block text-sm font-medium text-gray-700 mb-3">选项设置</label>
             <div class="space-y-3">
               <div v-for="(option, index) in formData.options" :key="index" class="flex items-center space-x-3">
@@ -137,7 +137,7 @@
           </div>
 
           <!-- 填空题设置 -->
-          <div v-if="formData.type === 'fill'">
+          <div v-if="formData.type === 'FILL_BLANK'">
             <label class="block text-sm font-medium text-gray-700 mb-3">填空设置</label>
             <div class="space-y-3">
               <div>
@@ -164,34 +164,16 @@
           <h3 class="text-lg font-medium text-gray-900">答案设置</h3>
         </div>
         <div class="p-6 space-y-6">
-          <!-- 单选题答案 -->
-          <div v-if="formData.type === 'single'">
+          <!-- 选择题答案 -->
+          <div v-if="formData.type === 'CHOICE'">
             <label class="block text-sm font-medium text-gray-700 mb-3">正确答案</label>
             <div class="space-y-2">
               <div v-for="(option, index) in formData.options" :key="index" class="flex items-center">
                 <input
-                  v-model="formData.correctAnswer"
+                  v-model="formData.answer"
                   type="radio"
-                  :value="index"
+                  :value="getOptionLabel(index)"
                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                />
-                <label class="ml-2 block text-sm text-gray-900">
-                  {{ getOptionLabel(index) }}. {{ option }}
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- 多选题答案 -->
-          <div v-if="formData.type === 'multiple'">
-            <label class="block text-sm font-medium text-gray-700 mb-3">正确答案（可多选）</label>
-            <div class="space-y-2">
-              <div v-for="(option, index) in formData.options" :key="index" class="flex items-center">
-                <input
-                  v-model="formData.correctAnswers"
-                  type="checkbox"
-                  :value="index"
-                  class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
                 <label class="ml-2 block text-sm text-gray-900">
                   {{ getOptionLabel(index) }}. {{ option }}
@@ -224,13 +206,12 @@
               </div>
             </div>
           </div>
-
           <!-- 填空题答案 -->
-          <div v-if="formData.type === 'fill'">
-            <label class="block text-sm font-medium text-gray-700 mb-3">标准答案</label>
+          <div v-if="formData.type === 'FILL_BLANK'">
+            <label class="block text-sm font-medium text-gray-700 mb-3">填空答案</label>
             <div class="space-y-3">
-              <div v-for="(blank, index) in formData.blankCount" :key="index" class="flex items-center space-x-3">
-                <span class="text-sm font-medium text-gray-500 w-16">第{{ index + 1 }}空：</span>
+              <div v-for="(answer, index) in formData.fillAnswers" :key="index" class="flex items-center space-x-3">
+                <span class="text-sm font-medium text-gray-500 w-16">第{{ index + 1 }}空:</span>
                 <input
                   v-model="formData.fillAnswers[index]"
                   type="text"
@@ -241,12 +222,12 @@
             </div>
           </div>
 
-          <!-- 问答题答案 -->
-          <div v-if="formData.type === 'essay'">
+          <!-- 其他题型答案 -->
+          <div v-if="formData.type === 'SHORT_ANSWER' || formData.type === 'PROOF'">
             <label class="block text-sm font-medium text-gray-700">参考答案</label>
             <textarea
-              v-model="formData.referenceAnswer"
-              rows="6"
+              v-model="formData.answer"
+              rows="4"
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               placeholder="请输入参考答案"
             ></textarea>
