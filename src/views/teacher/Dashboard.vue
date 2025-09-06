@@ -40,7 +40,10 @@
             <div class="ml-5 w-0 flex-1">
               <dl>
                 <dt class="text-sm font-medium text-gray-500 truncate">试卷数量</dt>
-                <dd class="text-lg font-medium text-gray-900">{{ stats.paperCount }}</dd>
+                <dd class="text-lg font-medium text-gray-900">
+                  <span v-if="loading" class="animate-pulse bg-gray-200 h-6 w-8 rounded inline-block"></span>
+                  <span v-else>{{ stats.paperCount }}</span>
+                </dd>
               </dl>
             </div>
           </div>
@@ -58,7 +61,10 @@
             <div class="ml-5 w-0 flex-1">
               <dl>
                 <dt class="text-sm font-medium text-gray-500 truncate">题目数量</dt>
-                <dd class="text-lg font-medium text-gray-900">{{ stats.questionCount }}</dd>
+                <dd class="text-lg font-medium text-gray-900">
+                  <span v-if="loading" class="animate-pulse bg-gray-200 h-6 w-8 rounded inline-block"></span>
+                  <span v-else>{{ stats.questionCount }}</span>
+                </dd>
               </dl>
             </div>
           </div>
@@ -76,7 +82,10 @@
             <div class="ml-5 w-0 flex-1">
               <dl>
                 <dt class="text-sm font-medium text-gray-500 truncate">参考学生</dt>
-                <dd class="text-lg font-medium text-gray-900">{{ stats.studentCount }}</dd>
+                <dd class="text-lg font-medium text-gray-900">
+                  <span v-if="loading" class="animate-pulse bg-gray-200 h-6 w-8 rounded inline-block"></span>
+                  <span v-else>{{ stats.studentCount }}</span>
+                </dd>
               </dl>
             </div>
           </div>
@@ -150,8 +159,14 @@
             <h3 class="text-lg font-medium text-gray-900">最近考试</h3>
             <router-link to="/teacher/exams" class="text-sm text-blue-600 hover:text-blue-500">查看全部</router-link>
           </div>
-          <div class="space-y-3">
-            <div v-for="exam in recentExams" :key="exam.id" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div v-if="loading" class="space-y-3">
+            <div v-for="i in 3" :key="i" class="animate-pulse p-3 bg-gray-50 rounded-lg">
+              <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+          <div v-else-if="recentExams.length > 0" class="space-y-3">
+            <div v-for="exam in recentExams" :key="exam.id" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
               <div>
                 <p class="text-sm font-medium text-gray-900">{{ exam.title }}</p>
                 <p class="text-xs text-gray-500">{{ exam.date }}</p>
@@ -160,6 +175,12 @@
                 {{ exam.status }}
               </span>
             </div>
+          </div>
+          <div v-else class="text-center py-6 text-gray-500">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <p class="mt-2 text-sm">暂无考试记录</p>
           </div>
         </div>
       </div>
@@ -171,19 +192,31 @@
             <h3 class="text-lg font-medium text-gray-900">最近试卷</h3>
             <router-link to="/teacher/exam-papers" class="text-sm text-blue-600 hover:text-blue-500">查看全部</router-link>
           </div>
-          <div class="space-y-3">
-            <div v-for="paper in recentPapers" :key="paper.id" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div v-if="loading" class="space-y-3">
+            <div v-for="i in 3" :key="i" class="animate-pulse p-3 bg-gray-50 rounded-lg">
+              <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+          <div v-else-if="recentPapers.length > 0" class="space-y-3">
+            <div v-for="paper in recentPapers" :key="paper.id" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
               <div>
                 <p class="text-sm font-medium text-gray-900">{{ paper.title }}</p>
                 <p class="text-xs text-gray-500">{{ paper.questionCount }} 道题目</p>
               </div>
               <button
                 @click="$router.push(`/teacher/exam-papers/${paper.id}/preview`)"
-                class="text-sm text-blue-600 hover:text-blue-500"
+                class="text-sm text-blue-600 hover:text-blue-500 px-3 py-1 rounded-md hover:bg-blue-50 transition-colors"
               >
                 预览
               </button>
             </div>
+          </div>
+          <div v-else class="text-center py-6 text-gray-500">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="mt-2 text-sm">暂无试卷记录</p>
           </div>
         </div>
       </div>
