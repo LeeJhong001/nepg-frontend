@@ -172,33 +172,16 @@ export interface DifficultyDistributionRequest {
   hard: number
 }
 
-// 题目使用记录项
-export interface QuestionUsageRecord {
+// 题目使用记录
+export interface QuestionUsageHistory {
   id: number
   questionId: number
-  userId?: number
-  userName?: string
-  usedBy?: string
-  studentName?: string
-  type: 'EXAM' | 'PRACTICE' | 'HOMEWORK'
-  title?: string
-  examTitle?: string
-  practiceTitle?: string
-  description?: string
+  userId: number
+  userName: string
+  usageType: 'EXAM' | 'PRACTICE' | 'HOMEWORK'
   score?: number
   isCorrect?: boolean
-  status?: 'COMPLETED' | 'IN_PROGRESS'
-  usedAt?: string
-  createdAt?: string
-}
-
-// 题目使用记录汇总
-export interface QuestionUsageHistory {
-  totalUsage: number
-  examUsage: number
-  practiceUsage: number
-  lastUsed?: string
-  records: QuestionUsageRecord[]
+  usedAt: string
 }
 
 // 组卷配置
