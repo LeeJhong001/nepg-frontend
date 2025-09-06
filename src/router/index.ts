@@ -18,8 +18,13 @@ const router = createRouter({
       meta: { requiresAuth: true },
       beforeEnter: (to, from, next) => {
         const authStore = useAuthStore()
-        if (authStore.isAuthenticated && authStore.user?.role) {
-          // 根据角色重定向到对应页面
+        // 检查是否是页面刷新或直接访问（from.name 为 null 或 from.path 为空）
+        const isPageRefresh = !from.name || from.path === ''
+        // 检查是否是从其他路由导航过来的正常访问
+        const isNormalNavigation = from.name && from.path && from.path !== to.path
+        
+        if (authStore.isAuthenticated && authStore.user?.role && isNormalNavigation) {
+          // 只在正常导航情况下根据角色重定向到对应页面
           switch (authStore.user.role) {
             case UserRole.ADMIN:
               next('/admin')
@@ -219,6 +224,11 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
+  
+  // 检查是否是页面刷新或直接访问
+  const isPageRefresh = !from.name || from.path === '' || from.fullPath === to.fullPath
+  // 检查是否是浏览器前进后退
+  const isBrowserNavigation = from.name && from.path && from.path !== to.path
 
   // 检查路由是否需要认证
   if (to.meta.requiresAuth) {
@@ -227,7 +237,9 @@ router.beforeEach((to, from, next) => {
       // 检查角色权限
       if (to.meta.requiredRole) {
         const userRole = authStore.user?.role
-        if (userRole !== to.meta.requiredRole) {
+        // 页面刷新时不进行角色权限重定向，允许用户停留在当前页面
+        if (userRole !== to.meta.requiredRole && !isPageRefresh && isBrowserNavigation) {
+          // 只在正常导航且角色不匹配时重定向
           next('/')
           return
         }
@@ -240,8 +252,8 @@ router.beforeEach((to, from, next) => {
   } else {
     // 不需要认证的页面
     if (to.path === '/login' || to.path === '/register') {
-      // 如果已登录，重定向到首页
-      if (authStore.isAuthenticated) {
+      // 如果已登录且不是刷新，重定向到首页
+      if (authStore.isAuthenticated && !isPageRefresh && isBrowserNavigation) {
         next('/')
       } else {
         next()

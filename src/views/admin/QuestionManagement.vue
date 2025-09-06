@@ -510,6 +510,146 @@
         </div>
       </div>
     </div>
+
+    <!-- 使用记录对话框 -->
+    <div v-if="showUsageHistoryDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-4/5 max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+        <!-- 对话框头部 -->
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">题目使用记录</h3>
+            <p class="text-sm text-gray-600 mt-1">{{ selectedQuestionTitle }}</p>
+          </div>
+          <button
+            @click="showUsageHistoryDialog = false"
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 加载状态 -->
+        <div v-if="usageHistoryLoading" class="flex items-center justify-center py-12">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span class="ml-3 text-gray-600">加载使用记录中...</span>
+        </div>
+
+        <!-- 使用记录内容 -->
+        <div v-else-if="usageHistoryData" class="flex-1 overflow-hidden">
+          <!-- 统计概览 -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-blue-50 rounded-lg p-4">
+              <div class="flex items-center">
+                <div class="p-2 bg-blue-100 rounded-lg">
+                  <DocumentTextIcon class="w-5 h-5 text-blue-600" />
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-blue-900">总使用次数</p>
+                  <p class="text-lg font-semibold text-blue-600">{{ usageHistoryData.totalUsage || 0 }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4">
+              <div class="flex items-center">
+                <div class="p-2 bg-green-100 rounded-lg">
+                  <CheckCircleIcon class="w-5 h-5 text-green-600" />
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-green-900">考试使用</p>
+                  <p class="text-lg font-semibold text-green-600">{{ usageHistoryData.examUsage || 0 }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-yellow-50 rounded-lg p-4">
+              <div class="flex items-center">
+                <div class="p-2 bg-yellow-100 rounded-lg">
+                  <ClockIcon class="w-5 h-5 text-yellow-600" />
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-yellow-900">练习使用</p>
+                  <p class="text-lg font-semibold text-yellow-600">{{ usageHistoryData.practiceUsage || 0 }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-purple-50 rounded-lg p-4">
+              <div class="flex items-center">
+                <div class="p-2 bg-purple-100 rounded-lg">
+                  <ChartBarIcon class="w-5 h-5 text-purple-600" />
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-purple-900">最近使用</p>
+                  <p class="text-sm font-semibold text-purple-600">{{ usageHistoryData.lastUsed ? formatDate(usageHistoryData.lastUsed) : '从未使用' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 详细记录列表 -->
+          <div class="bg-gray-50 rounded-lg p-4 flex-1 overflow-hidden">
+            <h4 class="text-md font-medium text-gray-900 mb-4">详细使用记录</h4>
+            <div class="overflow-y-auto max-h-80">
+              <div v-if="usageHistoryData.records && usageHistoryData.records.length > 0" class="space-y-3">
+                <div
+                  v-for="record in usageHistoryData.records"
+                  :key="record.id"
+                  class="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-sm transition-shadow"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center space-x-3">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                              :class="record.type === 'EXAM' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'">
+                          {{ record.type === 'EXAM' ? '考试' : '练习' }}
+                        </span>
+                        <h5 class="text-sm font-medium text-gray-900">{{ record.title || record.examTitle || record.practiceTitle }}</h5>
+                      </div>
+                      <div class="mt-2 text-sm text-gray-600">
+                        <p v-if="record.description">{{ record.description }}</p>
+                        <div class="flex items-center space-x-4 mt-1">
+                          <span>使用者: {{ record.usedBy || record.studentName || '未知' }}</span>
+                          <span>使用时间: {{ formatDate(record.usedAt || record.createdAt) }}</span>
+                          <span v-if="record.score !== undefined">得分: {{ record.score }}分</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <span v-if="record.status" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                            :class="record.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                        {{ record.status === 'COMPLETED' ? '已完成' : '进行中' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center py-8">
+                <ClockIcon class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p class="text-gray-500">暂无使用记录</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-else class="flex items-center justify-center py-12">
+          <div class="text-center">
+            <ClockIcon class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p class="text-gray-500">暂无使用记录数据</p>
+          </div>
+        </div>
+
+        <!-- 对话框底部 -->
+        <div class="flex justify-end mt-6 pt-4 border-t border-gray-200">
+          <button
+            @click="showUsageHistoryDialog = false"
+            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -544,7 +684,8 @@ import type {
   QuestionListItem,
   QuestionQueryParams,
   QuestionListResponse,
-  QuestionStatistics
+  QuestionStatistics,
+  QuestionUsageHistory
 } from '../../types/question'
 import { QuestionService } from '../../services/questionService'
 import { QuestionCategoryService } from '../../services/questionCategoryService'
@@ -606,8 +747,12 @@ const confirmCallback = ref<(() => void) | null>(null)
 const showBatchStatusDialog = ref(false)
 const showBatchCategoryDialog = ref(false)
 const showRandomDialog = ref(false)
+const showUsageHistoryDialog = ref(false)
 const batchStatus = ref<QuestionStatus>('ACTIVE')
 const batchCategoryId = ref<number>()
+const usageHistoryData = ref<QuestionUsageHistory | null>(null)
+const usageHistoryLoading = ref(false)
+const selectedQuestionTitle = ref('')
 
 // 随机题目配置
 const randomConfig = reactive({
@@ -1019,12 +1164,45 @@ const formatDate = (dateString: string) => {
 
 const handleViewUsageHistory = async (questionId: number) => {
   try {
+    // 找到对应的题目标题
+    const question = questions.value.find(q => q.id === questionId)
+    selectedQuestionTitle.value = question?.title || `题目 ID: ${questionId}`
+    
+    // 显示对话框并开始加载
+    showUsageHistoryDialog.value = true
+    usageHistoryLoading.value = true
+    usageHistoryData.value = null
+    
+    // 获取使用记录数据
     const history = await QuestionService.getQuestionUsageHistory(questionId)
-    // TODO: 显示使用记录对话框
-    console.log('Question usage history:', history)
-    success('使用记录功能暂未实现UI')
+    
+    // 处理返回的数据，确保格式正确
+    if (history) {
+      usageHistoryData.value = {
+        totalUsage: history.totalUsage || 0,
+        examUsage: history.examUsage || 0,
+        practiceUsage: history.practiceUsage || 0,
+        lastUsed: history.lastUsed,
+        records: history.records || []
+      }
+    } else {
+      // 如果没有数据，创建空的结构
+      usageHistoryData.value = {
+        totalUsage: 0,
+        examUsage: 0,
+        practiceUsage: 0,
+        lastUsed: null,
+        records: []
+      }
+    }
+    
+    success('使用记录加载成功')
   } catch (err: any) {
     error('获取使用记录失败: ' + err.message)
+    // 即使出错也要显示对话框，但显示空状态
+    usageHistoryData.value = null
+  } finally {
+    usageHistoryLoading.value = false
   }
 }
 
