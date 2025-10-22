@@ -1,14 +1,14 @@
 <template>
   <div class="space-y-6">
     <!-- 欢迎横幅 -->
-    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg shadow-lg p-8 text-white">
+    <div class="bg-gradient-to-r from-red-600 to-pink-700 rounded-lg shadow-lg p-8 text-white">
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-3xl font-bold mb-2">管理员控制台</h1>
-          <p class="text-blue-100 text-lg">系统管理与数据监控</p>
+          <p class="text-red-100 text-lg">系统管理与数据监控</p>
         </div>
         <div class="hidden md:block">
-          <svg class="w-24 h-24 text-blue-200 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+          <svg class="w-24 h-24 text-red-200 opacity-50" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
           </svg>
         </div>
@@ -79,51 +79,59 @@
     </div>
 
     <!-- 快捷管理入口 -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <router-link to="/admin/users" class="group bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-all transform hover:-translate-y-1">
-        <div class="flex flex-col items-center text-center">
-          <div class="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full p-6 mb-4 group-hover:scale-110 transition-transform">
-            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-            </svg>
+    <div>
+      <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+        <svg class="w-6 h-6 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        快捷管理入口
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <router-link to="/admin/users" class="group bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-all transform hover:-translate-y-1">
+          <div class="flex flex-col items-center text-center">
+            <div class="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full p-6 mb-4 group-hover:scale-110 transition-transform">
+              <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">用户管理</h3>
+            <p class="text-gray-600 text-sm">管理系统用户账号和权限</p>
+            <div class="mt-4 text-blue-600 font-medium group-hover:text-blue-700">
+              进入管理 →
+            </div>
           </div>
-          <h3 class="text-xl font-bold text-gray-900 mb-2">用户管理</h3>
-          <p class="text-gray-600 text-sm">管理系统用户账号和权限</p>
-          <div class="mt-4 text-blue-600 font-medium group-hover:text-blue-700">
-            进入管理 →
-          </div>
-        </div>
-      </router-link>
+        </router-link>
 
-      <router-link to="/admin/questions" class="group bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-all transform hover:-translate-y-1">
-        <div class="flex flex-col items-center text-center">
-          <div class="bg-gradient-to-br from-green-400 to-emerald-500 rounded-full p-6 mb-4 group-hover:scale-110 transition-transform">
-            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
+        <router-link to="/admin/questions" class="group bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-all transform hover:-translate-y-1">
+          <div class="flex flex-col items-center text-center">
+            <div class="bg-gradient-to-br from-green-400 to-emerald-500 rounded-full p-6 mb-4 group-hover:scale-110 transition-transform">
+              <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">题库管理</h3>
+            <p class="text-gray-600 text-sm">管理系统题目和题库内容</p>
+            <div class="mt-4 text-green-600 font-medium group-hover:text-green-700">
+              进入管理 →
+            </div>
           </div>
-          <h3 class="text-xl font-bold text-gray-900 mb-2">题库管理</h3>
-          <p class="text-gray-600 text-sm">管理系统题目和题库内容</p>
-          <div class="mt-4 text-green-600 font-medium group-hover:text-green-700">
-            进入管理 →
-          </div>
-        </div>
-      </router-link>
+        </router-link>
 
-      <router-link to="/admin/question-categories" class="group bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-all transform hover:-translate-y-1">
-        <div class="flex flex-col items-center text-center">
-          <div class="bg-gradient-to-br from-purple-400 to-pink-500 rounded-full p-6 mb-4 group-hover:scale-110 transition-transform">
-            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-            </svg>
+        <router-link to="/admin/question-categories" class="group bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-all transform hover:-translate-y-1">
+          <div class="flex flex-col items-center text-center">
+            <div class="bg-gradient-to-br from-purple-400 to-pink-500 rounded-full p-6 mb-4 group-hover:scale-110 transition-transform">
+              <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">分类管理</h3>
+            <p class="text-gray-600 text-sm">管理题目分类和标签</p>
+            <div class="mt-4 text-purple-600 font-medium group-hover:text-purple-700">
+              进入管理 →
+            </div>
           </div>
-          <h3 class="text-xl font-bold text-gray-900 mb-2">分类管理</h3>
-          <p class="text-gray-600 text-sm">管理题目分类和标签</p>
-          <div class="mt-4 text-purple-600 font-medium group-hover:text-purple-700">
-            进入管理 →
-          </div>
-        </div>
-      </router-link>
+        </router-link>
+      </div>
     </div>
   </div>
 </template>
