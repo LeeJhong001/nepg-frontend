@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import studentExamService, { AvailableExam } from '@/services/studentExamService'
+import studentExamService, { AvailableExam } from '@/services/student/examService'
 
 const router = useRouter()
 const loading = ref(false)

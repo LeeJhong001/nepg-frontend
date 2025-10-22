@@ -40,15 +40,15 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">分类</label>
+            <label class="block text-sm font-medium text-gray-700">科目</label>
             <select
-              v-model="filters.category"
+              v-model="filters.categoryId"
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             >
-              <option value="">全部分类</option>
-              <option value="math">数学</option>
-              <option value="chinese">语文</option>
-              <option value="english">英语</option>
+              <option value="">全部科目</option>
+              <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
+                {{ subject.name }}
+              </option>
             </select>
           </div>
           <div>
@@ -172,8 +172,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { teacherQuestionService, type Question } from '@/services/teacher/questionService'
+import { getEnabledSubjects, type Subject } from '@/services/common/subjectService'
 
-defineEmits<{
+const emit = defineEmits<{
   close: []
   select: [questions: any[]]
 }>()
@@ -182,7 +184,7 @@ defineEmits<{
 const filters = ref({
   search: '',
   type: '',
-  category: '',
+  categoryId: '',
   difficulty: ''
 })
 
@@ -190,35 +192,10 @@ const filters = ref({
 const selectedQuestions = ref<number[]>([])
 
 // 题目列表
-const questions = ref([
-  {
-    id: 1,
-    content: '下列哪个选项是正确的数学公式？',
-    type: 'single',
-    category: '数学',
-    difficulty: 'medium',
-    score: 5,
-    options: ['A. 2+2=5', 'B. 3×3=9', 'C. 4÷2=3', 'D. 5-1=3']
-  },
-  {
-    id: 2,
-    content: '请判断：地球是圆的。',
-    type: 'judge',
-    category: '地理',
-    difficulty: 'easy',
-    score: 3,
-    options: []
-  },
-  {
-    id: 3,
-    content: '请选择所有正确的英语语法规则：',
-    type: 'multiple',
-    category: '英语',
-    difficulty: 'hard',
-    score: 8,
-    options: ['A. 主语+谓语+宾语', 'B. 形容词修饰名词', 'C. 副词修饰动词', 'D. 介词后接名词']
-  }
-])
+const questions = ref<Question[]>([])
+
+// 科目列表
+const subjects = ref<Subject[]>([])
 
 // 分页
 const pagination = ref({
@@ -230,16 +207,7 @@ const pagination = ref({
 
 // 筛选后的题目
 const filteredQuestions = computed(() => {
-  return questions.value.filter(question => {
-    const matchSearch = !filters.value.search || 
-      question.content.toLowerCase().includes(filters.value.search.toLowerCase())
-    
-    const matchType = !filters.value.type || question.type === filters.value.type
-    const matchCategory = !filters.value.category || question.category.includes(filters.value.category)
-    const matchDifficulty = !filters.value.difficulty || question.difficulty === filters.value.difficulty
-    
-    return matchSearch && matchType && matchCategory && matchDifficulty
-  })
+  return questions.value
 })
 
 // 分页后的题目
@@ -363,20 +331,53 @@ const confirmSelection = () => {
   const selectedQuestionObjects = questions.value.filter(q => 
     selectedQuestions.value.includes(q.id)
   )
-  $emit('select', selectedQuestionObjects)
+  emit('select', selectedQuestionObjects)
 }
 
 // 加载题目列表
 const loadQuestions = async () => {
   try {
-    // TODO: 调用API获取题目列表
-    console.log('Load questions from bank')
+    const params: any = {
+      page: pagination.value.current,
+      size: pagination.value.size
+    }
+    
+    if (filters.value.type) params.type = filters.value.type
+    if (filters.value.categoryId) params.categoryId = Number(filters.value.categoryId)
+    if (filters.value.difficulty) params.difficulty = Number(filters.value.difficulty)
+    if (filters.value.search) params.keyword = filters.value.search
+    
+    const response = await teacherQuestionService.getQuestions(params)
+    questions.value = response.records
+    pagination.value.total = response.pages
+    pagination.value.totalItems = response.total
   } catch (error) {
     console.error('Failed to load questions:', error)
   }
 }
 
+// 加载科目列表
+const loadSubjects = async () => {
+  try {
+    subjects.value = await getEnabledSubjects()
+  } catch (error) {
+    console.error('Failed to load subjects:', error)
+  }
+}
+
+// 监听筛选条件变化
+watch([() => filters.value.type, () => filters.value.categoryId, () => filters.value.difficulty, () => filters.value.search], () => {
+  pagination.value.current = 1
+  loadQuestions()
+})
+
+// 监听分页变化
+watch(() => pagination.value.current, () => {
+  loadQuestions()
+})
+
 onMounted(() => {
+  loadSubjects()
   loadQuestions()
 })
 </script>

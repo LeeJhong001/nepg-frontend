@@ -57,7 +57,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, reactive, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import studentExamService, { StartExamResponse } from '@/services/studentExamService'
+import studentExamService, { StartExamResponse } from '@/services/student/examService'
 
 const route = useRoute()
 const router = useRouter()

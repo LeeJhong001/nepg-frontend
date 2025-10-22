@@ -63,7 +63,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import studentExamService, { RecordResponse } from '@/services/studentExamService'
+import studentExamService, { RecordResponse } from '@/services/student/examService'
 
 const router = useRouter()
 const loading = ref(false)

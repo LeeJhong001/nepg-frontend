@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth'
-import studentExamService from '@/services/studentExamService'
+import studentExamService from '@/services/student/examService'
 
 const authStore = useAuthStore()
 

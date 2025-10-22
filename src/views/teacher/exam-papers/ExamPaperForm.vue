@@ -230,6 +230,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import QuestionBankModal from './QuestionBankModal.vue'
+import { getEnabledSubjects, type Subject } from '@/services/common/subjectService'
 
 const route = useRoute()
 const router = useRouter()
@@ -251,12 +252,21 @@ const formData = ref({
   questions: [] as any[]
 })
 
-// 分类列表
-const categories = ref([
-  { id: 1, name: '数学' },
-  { id: 2, name: '语文' },
-  { id: 3, name: '英语' }
-])
+// 科目列表
+const categories = ref<Subject[]>([])
+
+// 加载科目列表
+const loadSubjects = async () => {
+  try {
+    categories.value = await getEnabledSubjects()
+  } catch (error) {
+    console.error('Failed to load subjects:', error)
+  }
+}
+
+onMounted(() => {
+  loadSubjects()
+})
 
 // 更新总分
 const updateTotalScore = () => {
