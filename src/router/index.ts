@@ -59,7 +59,7 @@ const router = createRouter({
         {
           path: '',
           name: 'admin-dashboard',
-          component: () => import('../views/admin/index.vue'),
+          component: () => import('../views/admin/Dashboard.vue'),
         },
         {
           path: 'users',
@@ -204,33 +204,34 @@ const router = createRouter({
         {
           path: '',
           name: 'student-dashboard',
-          component: () => import('../views/student/index.vue'),
+          component: () => import('../views/student/Dashboard.vue'),
         },
         {
           path: 'courses',
           name: 'student-courses',
           component: () => import('../views/student/CourseLearning.vue'),
         },
-        // 学生考试功能
+        // 考试管理
         {
           path: 'exams',
           name: 'student-exams',
-          component: () => import('../views/student/ExamsAvailable.vue'),
+          component: () => import('../views/student/exams/ExamList.vue'),
         },
         {
           path: 'exams/:examId/take',
           name: 'student-exams-take',
-          component: () => import('../views/student/TakeExam.vue'),
+          component: () => import('../views/student/exams/TakeExam.vue'),
         },
+        // 记录管理
         {
           path: 'records',
           name: 'student-records',
-          component: () => import('../views/student/RecordsList.vue'),
+          component: () => import('../views/student/records/RecordList.vue'),
         },
         {
           path: 'records/:recordId',
           name: 'student-record-detail',
-          component: () => import('../views/student/RecordDetail.vue'),
+          component: () => import('../views/student/records/RecordDetail.vue'),
         },
       ],
     },
