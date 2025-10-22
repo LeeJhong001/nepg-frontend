@@ -211,6 +211,27 @@ const router = createRouter({
           name: 'student-courses',
           component: () => import('../views/student/CourseLearning.vue'),
         },
+        // 学生考试功能
+        {
+          path: 'exams',
+          name: 'student-exams',
+          component: () => import('../views/student/ExamsAvailable.vue'),
+        },
+        {
+          path: 'exams/:examId/take',
+          name: 'student-exams-take',
+          component: () => import('../views/student/TakeExam.vue'),
+        },
+        {
+          path: 'records',
+          name: 'student-records',
+          component: () => import('../views/student/RecordsList.vue'),
+        },
+        {
+          path: 'records/:recordId',
+          name: 'student-record-detail',
+          component: () => import('../views/student/RecordDetail.vue'),
+        },
       ],
     },
   ],
