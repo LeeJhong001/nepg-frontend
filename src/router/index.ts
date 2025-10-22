@@ -198,7 +198,7 @@ const router = createRouter({
     {
       path: '/student',
       name: 'student',
-      component: Student,
+      component: () => import('../views/student/StudentLayout.vue'),
       meta: { requiresAuth: true, requiredRole: UserRole.STUDENT },
       children: [
         {

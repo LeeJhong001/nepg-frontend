@@ -68,108 +68,32 @@
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">待完成作业</dt>
-                    <dd class="text-lg font-medium text-gray-900">3</dd>
-                  </dl>
-                </div>
-              </div>
             </div>
           </div>
-
-          <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-6 w-6 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944A11.955 11.955 0 012.944 12A11.955 11.955 0 0112 21.056A11.955 11.955 0 0121.056 12z"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">参与项目</dt>
-                    <dd class="text-lg font-medium text-gray-900">2</dd>
-                  </dl>
-                </div>
-              </div>
+          <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500">已完成的考试</p>
+              <p class="text-2xl font-bold text-gray-800">{{ completedExamsCount }}</p>
             </div>
-          </div>
-
-          <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-6 w-6 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">平均成绩</dt>
-                    <dd class="text-lg font-medium text-gray-900">85</dd>
-                  </dl>
-                </div>
-              </div>
+            <div class="bg-blue-100 text-blue-600 p-3 rounded-full">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
           </div>
         </div>
 
-        <!-- 学习功能 -->
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-6 w-6 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 5.477 5.754 5 7.5 5s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.523 18.246 19 16.5 19c-1.746 0-3.332-.477-4.5-1.253"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">课程学习</dt>
-                    <dd class="text-lg font-medium text-gray-900">学习</dd>
-                  </dl>
-                </div>
-              </div>
+        <!-- 快捷功能入口 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <router-link to="/student/exams" class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+            <div class="bg-green-100 text-green-600 p-4 inline-block rounded-full mb-4">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
             </div>
-          </div>
+            <h3 class="text-lg font-semibold text-gray-800">在线考试</h3>
+            <p class="text-gray-500 mt-1">查看并参加可用的在线考试</p>
+          </router-link>
 
-          <div class="bg-white overflow-hidden shadow rounded-lg">
+          <router-link to="/student/records" class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+            <div class="bg-blue-100 text-blue-600 p-4 inline-block rounded-full mb-4">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             <div class="p-5">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
