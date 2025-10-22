@@ -91,6 +91,11 @@ const router = createRouter({
           name: 'admin-questions-detail',
           component: () => import('../views/admin/QuestionDetail.vue'),
         },
+        {
+          path: 'subjects',
+          name: 'admin-subjects',
+          component: () => import('../views/admin/SubjectManagement.vue'),
+        },
       ],
     },
     {
