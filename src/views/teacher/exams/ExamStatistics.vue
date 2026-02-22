@@ -257,6 +257,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
+import { teacherExamService } from '@/services/teacher/examService'
 
 const route = useRoute()
 const examId = route.params.id as string
@@ -275,10 +276,20 @@ const exam = ref({
 
 // 统计数据
 const statistics = ref({
-  participantCount: 25,
-  averageScore: 78.5,
-  passRate: 72.0,
-  averageDuration: 95
+  participantCount: 0,
+  completedCount: 0,
+  averageScore: 0,
+  highestScore: 0,
+  lowestScore: 0,
+  passRate: 0,
+  averageDuration: 0,
+  scoreDistribution: {
+    under60: 0,
+    score60to69: 0,
+    score70to79: 0,
+    score80to89: 0,
+    score90plus: 0
+  }
 })
 
 // 学生成绩
@@ -359,16 +370,13 @@ const initScoreChart = () => {
   
   // 计算分数分布
   const scoreRanges = ['0-59', '60-69', '70-79', '80-89', '90-100']
-  const distribution = [0, 0, 0, 0, 0]
-  
-  results.value.forEach(result => {
-    const score = result.score
-    if (score < 60) distribution[0]++
-    else if (score < 70) distribution[1]++
-    else if (score < 80) distribution[2]++
-    else if (score < 90) distribution[3]++
-    else distribution[4]++
-  })
+  const distribution = [
+    statistics.value.scoreDistribution?.under60 || 0,
+    statistics.value.scoreDistribution?.score60to69 || 0,
+    statistics.value.scoreDistribution?.score70to79 || 0,
+    statistics.value.scoreDistribution?.score80to89 || 0,
+    statistics.value.scoreDistribution?.score90plus || 0
+  ]
   
   const option = {
     tooltip: {
@@ -412,7 +420,7 @@ const initQuestionChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: questionAnalysis.value.map(q => `第${q.number}题`)
+      data: questionAnalysis.value.map((q: any) => `第${q.number}题`)
     },
     yAxis: {
       type: 'value',
@@ -424,7 +432,7 @@ const initQuestionChart = () => {
     series: [{
       name: '正确率',
       type: 'bar',
-      data: questionAnalysis.value.map(q => q.correctRate),
+      data: questionAnalysis.value.map((q: any) => q.correctRate),
       itemStyle: {
         color: '#10B981'
       }
@@ -499,10 +507,25 @@ const exportResults = () => {
 // 加载数据
 const loadStatistics = async () => {
   try {
-    // TODO: 调用API获取统计数据
-    console.log('Load statistics:', examId)
+    const data: any = await teacherExamService.getExamStatistics(Number(examId))
+    
+    // 更新考试信息
+    exam.value.title = data.title || '考试'
+    
+    // 更新统计数据
+    statistics.value.participantCount = data.totalStudents || 0
+    statistics.value.completedCount = data.completedCount || 0
+    statistics.value.averageScore = data.averageScore || 0
+    statistics.value.highestScore = data.highestScore || 0
+    statistics.value.lowestScore = data.lowestScore || 0
+    statistics.value.passRate = (data.passRate || 0) * 100 // 后端返回 0-1 的小数
+    statistics.value.averageDuration = 0 // 后端暂未返回
+    if (data.scoreDistribution) {
+       statistics.value.scoreDistribution = data.scoreDistribution
+    }
   } catch (error) {
     console.error('Failed to load statistics:', error)
+    alert('加载统计数据失败')
   }
 }
 
