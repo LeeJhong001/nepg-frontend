@@ -65,17 +65,27 @@ export const examService = {
   // 获取考试列表
   async getExams(params: ExamListParams = {}): Promise<ExamListResponse> {
     const response = await apiClient.get('/api/teacher/exams', { params })
-    return response.data
+    // 后端返回的是 MyBatis Plus 格式: { records, total, size, current, pages }
+    const data = response.data
+    return {
+      content: data.records || [],
+      totalElements: data.total || 0,
+      totalPages: data.pages || 0,
+      currentPage: data.current || 1,
+      pageSize: data.size || 10
+    }
   },
 
   // 获取考试列表 (别名)
   async getExamList(params: ExamListParams = {}): Promise<{ data: { items: Exam[], totalPages: number, totalItems: number } }> {
-    const response = await this.getExams(params)
+    const response = await apiClient.get('/api/teacher/exams', { params })
+    // 后端返回的是 MyBatis Plus 格式: { records, total, size, current, pages }
+    const data = response.data
     return {
       data: {
-        items: response.content,
-        totalPages: response.totalPages,
-        totalItems: response.totalElements
+        items: data.records || [],
+        totalPages: data.pages || 0,
+        totalItems: data.total || 0
       }
     }
   },

@@ -1,5 +1,13 @@
 <template>
   <div>
+    <!-- 加载状态 -->
+    <div v-if="loading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <p class="mt-2 text-sm text-gray-500">加载中...</p>
+    </div>
+    
+    <!-- 页面内容 -->
+    <template v-else>
     <!-- 页面标题和操作 -->
     <div class="sm:flex sm:items-center sm:justify-between mb-6">
       <div>
@@ -8,14 +16,14 @@
       </div>
       <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex space-x-3">
         <button
-          v-if="exam.status === 'draft'"
+          v-if="exam.status === 'DRAFT'"
           @click="publishExam"
           class="inline-flex items-center justify-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
         >
           发布考试
         </button>
         <button
-          v-if="exam.status === 'published'"
+          v-if="exam.status === 'PUBLISHED'"
           @click="archiveExam"
           class="inline-flex items-center justify-center rounded-md border border-transparent bg-yellow-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-700"
         >
@@ -51,28 +59,24 @@
                 <dd class="mt-1 text-sm text-gray-900">{{ exam.title }}</dd>
               </div>
               <div>
-                <dt class="text-sm font-medium text-gray-500">考试类型</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ getTypeText(exam.type) }}</dd>
-              </div>
-              <div>
                 <dt class="text-sm font-medium text-gray-500">状态</dt>
                 <dd class="mt-1">
-                  <span :class="getStatusClass(exam.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                    {{ getStatusText(exam.status) }}
+                  <span :class="getStatusClass(exam.status || 'DRAFT')" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                    {{ getStatusText(exam.status || 'DRAFT') }}
                   </span>
                 </dd>
               </div>
               <div>
                 <dt class="text-sm font-medium text-gray-500">总分</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ exam.totalScore }} 分</dd>
-              </div>
-              <div>
-                <dt class="text-sm font-medium text-gray-500">及格分数</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ exam.passScore }} 分</dd>
+                <dd class="mt-1 text-sm text-gray-900">{{ exam.totalScore || 0 }} 分</dd>
               </div>
               <div>
                 <dt class="text-sm font-medium text-gray-500">考试时长</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ exam.duration }} 分钟</dd>
+                <dd class="mt-1 text-sm text-gray-900">{{ exam.duration || 0 }} 分钟</dd>
+              </div>
+              <div v-if="exam.subjectName">
+                <dt class="text-sm font-medium text-gray-500">所属学科</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ exam.subjectName }}</dd>
               </div>
               <div class="sm:col-span-2">
                 <dt class="text-sm font-medium text-gray-500">考试描述</dt>
@@ -93,11 +97,11 @@
             <dl class="space-y-4">
               <div class="flex justify-between">
                 <dt class="text-sm font-medium text-gray-500">应参考人数</dt>
-                <dd class="text-sm text-gray-900">{{ exam.totalParticipants }}</dd>
+                <dd class="text-sm text-gray-900">{{ exam.totalParticipants || 0 }}</dd>
               </div>
               <div class="flex justify-between">
                 <dt class="text-sm font-medium text-gray-500">已参考人数</dt>
-                <dd class="text-sm text-gray-900">{{ exam.submittedCount }}</dd>
+                <dd class="text-sm text-gray-900">{{ exam.submittedCount || 0 }}</dd>
               </div>
               <div class="flex justify-between">
                 <dt class="text-sm font-medium text-gray-500">参考率</dt>
@@ -105,7 +109,7 @@
               </div>
               <div class="flex justify-between">
                 <dt class="text-sm font-medium text-gray-500">平均分</dt>
-                <dd class="text-sm text-gray-900">{{ exam.averageScore || '--' }}</dd>
+                <dd class="text-sm text-gray-900">{{ exam.averageScore ? exam.averageScore.toFixed(1) : '--' }}</dd>
               </div>
               <div class="flex justify-between">
                 <dt class="text-sm font-medium text-gray-500">及格率</dt>
@@ -131,11 +135,11 @@
               </div>
               <div>
                 <dt class="text-sm font-medium text-gray-500">创建时间</dt>
-                <dd class="text-sm text-gray-900">{{ formatDateTime(exam.createdAt) }}</dd>
+                <dd class="text-sm text-gray-900">{{ exam.createdAt ? formatDateTime(exam.createdAt) : '--' }}</dd>
               </div>
-              <div v-if="exam.publishedAt">
-                <dt class="text-sm font-medium text-gray-500">发布时间</dt>
-                <dd class="text-sm text-gray-900">{{ formatDateTime(exam.publishedAt) }}</dd>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">更新时间</dt>
+                <dd class="text-sm text-gray-900">{{ exam.updatedAt ? formatDateTime(exam.updatedAt) : '--' }}</dd>
               </div>
             </dl>
           </div>
@@ -241,40 +245,48 @@
         </table>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { teacherExamService, type Exam } from '../../../services/teacher/examService'
+import { useNotification } from '../../../composables/useNotification'
 
 const route = useRoute()
 const router = useRouter()
+const { success: showSuccess, error: showError } = useNotification()
 const examId = route.params.id as string
 
+// 加载状态
+const loading = ref(false)
+
 // 考试详情
-const exam = ref({
-  id: 1,
-  title: '期中考试',
-  description: '数学期中测试',
-  type: 'exam',
-  status: 'published',
-  totalScore: 100,
-  passScore: 60,
-  duration: 120,
-  startTime: '2024-01-15T09:00:00',
-  endTime: '2024-01-15T11:00:00',
-  createdAt: '2024-01-10T10:00:00',
-  publishedAt: '2024-01-12T14:00:00',
-  totalParticipants: 30,
-  submittedCount: 25,
-  averageScore: 78.5,
-  shuffleQuestions: true,
-  shuffleOptions: false,
-  showScore: true,
-  showAnswer: false,
-  preventCopy: true,
-  fullScreen: false
+const exam = ref<Partial<Exam & {
+  passScore?: number
+  totalParticipants?: number
+  submittedCount?: number
+  averageScore?: number
+  shuffleQuestions?: boolean
+  shuffleOptions?: boolean
+  showScore?: boolean
+  showAnswer?: boolean
+  preventCopy?: boolean
+  fullScreen?: boolean
+}>>({
+  id: 0,
+  title: '',
+  description: '',
+  status: 'DRAFT',
+  totalScore: 0,
+  duration: 0,
+  startTime: '',
+  endTime: '',
+  createdAt: '',
+  updatedAt: '',
+  subjectId: 0
 })
 
 // 参考学生列表
@@ -325,41 +337,36 @@ const getPassRate = () => {
 
 // 状态样式和文本
 const getStatusClass = (status: string) => {
-  switch (status) {
-    case 'published':
+  const upperStatus = status.toUpperCase()
+  switch (upperStatus) {
+    case 'PUBLISHED':
       return 'bg-green-100 text-green-800'
-    case 'draft':
+    case 'DRAFT':
       return 'bg-yellow-100 text-yellow-800'
-    case 'archived':
+    case 'ONGOING':
+      return 'bg-blue-100 text-blue-800'
+    case 'FINISHED':
       return 'bg-gray-100 text-gray-800'
+    case 'CANCELLED':
+      return 'bg-red-100 text-red-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
 }
 
 const getStatusText = (status: string) => {
-  switch (status) {
-    case 'published':
+  const upperStatus = status.toUpperCase()
+  switch (upperStatus) {
+    case 'PUBLISHED':
       return '已发布'
-    case 'draft':
+    case 'DRAFT':
       return '草稿'
-    case 'archived':
-      return '已归档'
-    default:
-      return '未知'
-  }
-}
-
-const getTypeText = (type: string) => {
-  switch (type) {
-    case 'exam':
-      return '正式考试'
-    case 'quiz':
-      return '随堂测验'
-    case 'homework':
-      return '课后作业'
-    case 'practice':
-      return '练习测试'
+    case 'ONGOING':
+      return '进行中'
+    case 'FINISHED':
+      return '已结束'
+    case 'CANCELLED':
+      return '已取消'
     default:
       return '未知'
   }
@@ -392,45 +399,94 @@ const getParticipantStatusText = (status: string) => {
 }
 
 // 格式化日期时间
-const formatDateTime = (dateString: string) => {
-  return new Date(dateString).toLocaleString('zh-CN')
+const formatDateTime = (dateString: string | undefined) => {
+  if (!dateString) return '--'
+  try {
+    return new Date(dateString).toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch (error) {
+    return dateString
+  }
 }
 
 // 考试操作
 const publishExam = async () => {
   try {
-    // TODO: 调用发布API
-    console.log('Publish exam:', examId)
+    await teacherExamService.publishExam(Number(examId))
+    showSuccess('考试发布成功')
+    // 重新加载数据
+    await loadExamDetail()
   } catch (error) {
     console.error('Failed to publish exam:', error)
+    showError('发布考试失败')
   }
 }
 
 const archiveExam = async () => {
   try {
-    // TODO: 调用归档API
-    console.log('Archive exam:', examId)
+    await teacherExamService.archiveExam(Number(examId))
+    showSuccess('考试归档成功')
+    // 重新加载数据
+    await loadExamDetail()
   } catch (error) {
     console.error('Failed to archive exam:', error)
+    showError('归档考试失败')
   }
 }
 
 const copyExam = async () => {
   try {
-    // TODO: 调用复制API
-    console.log('Copy exam:', examId)
+    const newExam = await teacherExamService.copyExam(Number(examId))
+    showSuccess('考试复制成功')
+    // 跳转到新考试编辑页面
+    router.push(`/teacher/exams/${newExam.id}/edit`)
   } catch (error) {
     console.error('Failed to copy exam:', error)
+    showError('复制考试失败')
   }
 }
 
 // 加载数据
 const loadExamDetail = async () => {
   try {
-    // TODO: 调用API获取考试详情
-    console.log('Load exam detail:', examId)
+    loading.value = true
+    
+    // 加载考试详情
+    const examData = await teacherExamService.getExam(Number(examId))
+    
+    // 映射数据
+    exam.value = {
+      ...examData,
+      // 默认值处理
+      passScore: Math.round((examData.totalScore || 100) * 0.6), // 默认及格分数为总分的60%
+      totalParticipants: 0,
+      submittedCount: 0,
+      averageScore: 0
+    }
+    
+    // 加载统计信息（如果可用）
+    try {
+      const stats = await teacherExamService.getExamStatistics(Number(examId))
+      exam.value.totalParticipants = stats.totalStudents || 0
+      exam.value.submittedCount = stats.submittedCount || 0
+      exam.value.averageScore = stats.averageScore || 0
+    } catch (error) {
+      console.warn('Failed to load statistics:', error)
+      // 统计信息加载失败不影响基本信息的显示
+    }
+    
+    console.log('考试详情加载成功:', exam.value)
   } catch (error) {
     console.error('Failed to load exam detail:', error)
+    showError('加载考试详情失败')
+  } finally {
+    loading.value = false
   }
 }
 

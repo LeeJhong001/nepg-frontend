@@ -59,13 +59,17 @@
               <select
                 v-model="formData.paperId"
                 required
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                :disabled="loadingPapers"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="">请选择试卷</option>
+                <option value="">{{ loadingPapers ? '加载中...' : '请选择试卷' }}</option>
                 <option v-for="paper in papers" :key="paper.id" :value="paper.id">
-                  {{ paper.title }} ({{ paper.questionCount }}题)
+                  {{ paper.title }} ({{ paper.questionCount }}题，总分{{ paper.totalScore }}分)
                 </option>
               </select>
+              <p v-if="!loadingPapers && papers.length === 0" class="mt-1 text-sm text-gray-500">
+                暂无可用试卷，请先创建试卷
+              </p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">总分</label>
@@ -332,9 +336,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { teacherExamPaperService, type ExamPaper } from '../../../services/teacher/examPaperService'
+import { useNotification } from '../../../composables/useNotification'
 
 const route = useRoute()
 const router = useRouter()
+const { success: showSuccess, error: showError } = useNotification()
 
 const isEdit = computed(() => !!route.params.id)
 const examId = computed(() => route.params.id as string)
@@ -367,11 +374,8 @@ const formData = ref({
 const studentSearch = ref('')
 
 // 试卷列表
-const papers = ref([
-  { id: 1, title: '数学期中试卷', questionCount: 20, totalScore: 100 },
-  { id: 2, title: '语文阅读理解', questionCount: 15, totalScore: 80 },
-  { id: 3, title: '英语听力测试', questionCount: 25, totalScore: 120 }
-])
+const papers = ref<Array<{ id: number; title: string; questionCount: number; totalScore: number }>>([])
+const loadingPapers = ref(false)
 
 // 班级列表
 const classes = ref([
@@ -446,10 +450,40 @@ const submitForm = async () => {
   }
 }
 
+// 加载试卷列表
+const loadPapers = async () => {
+  try {
+    loadingPapers.value = true
+    // 加载所有试卷（包括草稿和已发布的），让用户可以选择
+    const response = await teacherExamPaperService.getExamPapers({
+      page: 1,
+      size: 100 // 加载足够多的试卷
+    })
+    
+    // 转换试卷数据格式
+    papers.value = response.content.map((paper: ExamPaper) => ({
+      id: paper.id,
+      title: paper.title,
+      questionCount: paper.totalQuestions || 0,
+      totalScore: paper.totalScore || 0
+    }))
+    
+    console.log('加载试卷列表成功，共', papers.value.length, '份试卷')
+  } catch (error) {
+    console.error('加载试卷列表失败:', error)
+    showError('加载试卷列表失败，请检查网络连接')
+  } finally {
+    loadingPapers.value = false
+  }
+}
+
 // 加载数据
 const loadData = async () => {
   try {
-    // TODO: 加载试卷、班级、学生列表
+    // 加载试卷列表
+    await loadPapers()
+    
+    // TODO: 加载班级、学生列表
     
     if (isEdit.value) {
       // TODO: 加载考试详情

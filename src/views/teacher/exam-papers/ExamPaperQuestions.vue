@@ -99,7 +99,13 @@
         </div>
       </div>
       
-      <div v-if="questions.length === 0" class="text-center py-12">
+
+      <div v-if="loading" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-sm text-gray-500">加载中...</p>
+      </div>
+      
+      <div v-else-if="questions.length === 0" class="text-center py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
@@ -113,6 +119,7 @@
           :disabled="!sortMode"
           item-key="id"
           class="divide-y divide-gray-200"
+          @end="onDragEnd"
         >
           <template #item="{ element: question, index }">
             <div class="p-6 hover:bg-gray-50" :class="{ 'cursor-move': sortMode }">
@@ -190,6 +197,18 @@
             </div>
           </template>
         </draggable>
+        
+        <!-- 保存按钮 -->
+        <div v-if="!sortMode && questions.length > 0" class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+          <button
+            @click="saveAllChanges"
+            :disabled="saving"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="saving">保存中...</span>
+            <span v-else>保存修改</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -238,37 +257,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import QuestionBankModal from './QuestionBankModal.vue'
+import { teacherExamPaperService } from '../../../services/teacher/examPaperService'
+import { useNotification } from '../../../composables/useNotification'
 
 const route = useRoute()
 const router = useRouter()
+const { success: showSuccess, error: showError } = useNotification()
 const paperId = route.params.id as string
 
 // 响应式数据
-const paperTitle = ref('高等数学期末考试')
-const questions = ref([
-  {
-    id: 1,
-    type: 'single',
-    difficulty: 'medium',
-    score: 4,
-    category: '数学',
-    content: '下列函数中，哪个是偶函数？',
-    options: ['f(x) = x²', 'f(x) = x³', 'f(x) = sin(x)', 'f(x) = ln(x)']
-  },
-  {
-    id: 2,
-    type: 'multiple',
-    difficulty: 'hard',
-    score: 6,
-    category: '数学',
-    content: '下列关于导数的说法正确的是：',
-    options: ['导数表示函数的变化率', '可导必连续', '连续必可导', '导数的几何意义是切线斜率']
-  }
-])
+const paperTitle = ref('')
+const questions = ref<any[]>([])
+const loading = ref(false)
+const saving = ref(false)
 
 const selectedQuestions = ref<number[]>([])
 const sortMode = ref(false)
@@ -367,36 +372,83 @@ const formatQuestionContent = (content: string) => {
   return content.replace(/______/g, '<span class="inline-block border-b-2 border-gray-400 w-16 h-5"></span>')
 }
 
-// 切换排序模式
-const toggleSortMode = () => {
-  sortMode.value = !sortMode.value
-  if (!sortMode.value) {
-    // 退出排序模式时保存顺序
+// 拖拽结束
+const onDragEnd = () => {
+  // 拖拽结束后自动保存顺序
+  if (sortMode.value) {
     saveQuestionOrder()
   }
 }
 
+// 切换排序模式
+const toggleSortMode = async () => {
+  if (sortMode.value) {
+    // 退出排序模式时保存顺序
+    await saveQuestionOrder()
+  }
+  sortMode.value = !sortMode.value
+}
+
 // 从题库添加题目
-const addQuestionsFromBank = (selectedQuestions: any[]) => {
-  questions.value.push(...selectedQuestions)
-  showQuestionBank.value = false
+const addQuestionsFromBank = async (selectedQuestions: any[]) => {
+  try {
+    const questionIds = selectedQuestions.map(q => q.id)
+    await teacherExamPaperService.addQuestionsToExamPaper(Number(paperId), questionIds)
+    
+    // 重新加载题目列表
+    await loadPaperQuestions()
+    showQuestionBank.value = false
+    showSuccess(`成功添加 ${questionIds.length} 道题目`)
+  } catch (error) {
+    console.error('添加题目失败:', error)
+    showError('添加题目失败')
+  }
 }
 
 // 移除题目
-const removeQuestion = (questionId: number) => {
-  const index = questions.value.findIndex(q => q.id === questionId)
-  if (index > -1) {
-    questions.value.splice(index, 1)
+const removeQuestion = async (questionId: number) => {
+  if (!confirm('确定要移除这道题目吗？')) {
+    return
+  }
+  
+  try {
+    await teacherExamPaperService.removeQuestionFromExamPaper(Number(paperId), questionId)
+    // 从列表中移除
+    const index = questions.value.findIndex(q => q.id === questionId)
+    if (index > -1) {
+      questions.value.splice(index, 1)
+    }
+    showSuccess('题目已移除')
+  } catch (error) {
+    console.error('移除题目失败:', error)
+    showError('移除题目失败')
   }
 }
 
 // 批量删除
-const batchDelete = () => {
+const batchDelete = async () => {
   if (selectedQuestions.value.length === 0) return
   
-  if (confirm(`确定要删除选中的 ${selectedQuestions.value.length} 道题目吗？`)) {
+  if (!confirm(`确定要删除选中的 ${selectedQuestions.value.length} 道题目吗？`)) {
+    return
+  }
+  
+  try {
+    // 批量删除题目
+    for (const questionId of selectedQuestions.value) {
+      await teacherExamPaperService.removeQuestionFromExamPaper(Number(paperId), questionId)
+    }
+    
+    // 保存要删除的数量
+    const deletedCount = selectedQuestions.value.length
+    
+    // 从列表中移除
     questions.value = questions.value.filter(q => !selectedQuestions.value.includes(q.id))
     selectedQuestions.value = []
+    showSuccess(`成功删除 ${deletedCount} 道题目`)
+  } catch (error) {
+    console.error('批量删除失败:', error)
+    showError('批量删除失败')
   }
 }
 
@@ -408,11 +460,27 @@ const editQuestionScore = (question: any) => {
 }
 
 // 确认分值修改
-const confirmScoreChange = () => {
-  if (currentEditQuestion.value && newScore.value > 0) {
+const confirmScoreChange = async () => {
+  if (!currentEditQuestion.value || newScore.value <= 0) {
+    showError('请输入有效的分值')
+    return
+  }
+  
+  try {
+    await teacherExamPaperService.updateQuestionScore(
+      Number(paperId),
+      currentEditQuestion.value.id,
+      newScore.value
+    )
+    
+    // 更新本地数据
     currentEditQuestion.value.score = newScore.value
     showScoreModal.value = false
     currentEditQuestion.value = null
+    showSuccess('分值修改成功')
+  } catch (error) {
+    console.error('修改分值失败:', error)
+    showError('修改分值失败')
   }
 }
 
@@ -424,20 +492,89 @@ const viewQuestionDetail = (questionId: number) => {
 // 保存题目顺序
 const saveQuestionOrder = async () => {
   try {
-    // TODO: 调用API保存题目顺序
-    console.log('Save question order:', questions.value.map(q => q.id))
+    const questionIds = questions.value.map(q => q.id)
+    await teacherExamPaperService.updateQuestionOrder(Number(paperId), questionIds)
+    console.log('题目顺序保存成功')
   } catch (error) {
-    console.error('Failed to save question order:', error)
+    console.error('保存题目顺序失败:', error)
+    showError('保存题目顺序失败')
+    throw error
+  }
+}
+
+// 保存所有修改
+const saveAllChanges = async () => {
+  if (saving.value) return
+  
+  try {
+    saving.value = true
+    
+    // 保存题目顺序
+    if (questions.value.length > 0) {
+      const questionIds = questions.value.map(q => q.id)
+      await teacherExamPaperService.updateQuestionOrder(Number(paperId), questionIds)
+    }
+    
+    showSuccess('保存成功')
+  } catch (error) {
+    console.error('保存失败:', error)
+    showError('保存失败，请重试')
+  } finally {
+    saving.value = false
   }
 }
 
 // 加载试卷题目
 const loadPaperQuestions = async () => {
   try {
-    // TODO: 调用API获取试卷题目
-    console.log('Load paper questions:', paperId)
+    loading.value = true
+    
+    // 加载试卷详情
+    const paper = await teacherExamPaperService.getExamPaper(Number(paperId))
+    paperTitle.value = paper.title
+    
+    // 加载试卷题目
+    if (paper.questions && paper.questions.length > 0) {
+      questions.value = paper.questions.map((q: any) => {
+        // 转换题目类型
+        const typeMap: Record<string, string> = {
+          'CHOICE': 'single',
+          'FILL_BLANK': 'fill',
+          'SHORT_ANSWER': 'essay',
+          'PROOF': 'essay'
+        }
+        
+        // 转换难度
+        const difficultyMap: Record<number, string> = {
+          1: 'easy',
+          2: 'medium',
+          3: 'hard'
+        }
+        
+        return {
+          id: q.questionId,
+          type: typeMap[q.questionType] || q.questionType.toLowerCase(),
+          difficulty: difficultyMap[q.difficulty] || 'medium',
+          score: q.score,
+          category: q.categoryName || '',
+          content: q.questionContent || q.questionTitle,
+          options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : [],
+          sortOrder: q.sortOrder
+        }
+      })
+      
+      // 按顺序排序
+      questions.value.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    } else {
+      questions.value = []
+    }
+    
+    console.log('加载试卷题目成功，共', questions.value.length, '道题目')
   } catch (error) {
-    console.error('Failed to load paper questions:', error)
+    console.error('加载试卷题目失败:', error)
+    showError('加载试卷题目失败')
+  } finally {
+    loading.value = false
   }
 }
 

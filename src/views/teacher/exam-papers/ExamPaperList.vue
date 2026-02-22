@@ -78,7 +78,23 @@
     </div>
 
     <!-- 试卷列表 -->
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div v-if="loading" class="flex justify-center items-center py-12">
+      <div class="text-center">
+        <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-sm text-gray-500">加载中...</p>
+      </div>
+    </div>
+    <div v-else-if="paginatedPapers.length === 0" class="text-center py-12">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">暂无试卷</h3>
+      <p class="mt-1 text-sm text-gray-500">开始创建您的第一份试卷</p>
+    </div>
+    <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       <div
         v-for="paper in paginatedPapers"
         :key="paper.id"
@@ -98,7 +114,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               </button>
-              <div class="relative" ref="dropdownRef">
+              <div class="relative" :ref="(el) => setDropdownRef(el, paper.id)">
                 <button
                   @click="toggleDropdown(paper.id)"
                   class="text-gray-400 hover:text-gray-600"
@@ -114,7 +130,9 @@
                   <div class="py-1">
                     <button
                       @click="editPaper(paper.id)"
-                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      :disabled="!isCreatedByCurrentUser(paper)"
+                      :title="!isCreatedByCurrentUser(paper) ? '只能编辑自己创建的试卷' : ''"
+                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       编辑试卷
                     </button>
@@ -143,28 +161,38 @@
           </div>
 
           <div class="space-y-3">
-            <p class="text-sm text-gray-600">{{ paper.description }}</p>
+            <p v-if="paper.description" class="text-sm text-gray-600">{{ paper.description }}</p>
             
             <div class="flex items-center justify-between text-sm">
               <span class="text-gray-500">题目数量</span>
-              <span class="font-medium">{{ paper.questionCount }} 题</span>
+              <span class="font-medium">{{ paper.totalQuestions || 0 }} 题</span>
             </div>
             
             <div class="flex items-center justify-between text-sm">
               <span class="text-gray-500">总分</span>
-              <span class="font-medium">{{ paper.totalScore }} 分</span>
+              <span class="font-medium">{{ paper.totalScore || 0 }} 分</span>
             </div>
             
             <div class="flex items-center justify-between text-sm">
-              <span class="text-gray-500">难度</span>
-              <span :class="getDifficultyClass(paper.difficulty)" class="px-2 py-1 text-xs font-medium rounded-full">
-                {{ getDifficultyText(paper.difficulty) }}
+              <span class="text-gray-500">考试时长</span>
+              <span class="font-medium">{{ paper.duration || 0 }} 分钟</span>
+            </div>
+            
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-500">状态</span>
+              <span :class="getStatusClass(paper.status)" class="px-2 py-1 text-xs font-medium rounded-full">
+                {{ getStatusText(paper.status) }}
               </span>
             </div>
             
             <div class="flex items-center justify-between text-sm">
               <span class="text-gray-500">创建时间</span>
               <span class="text-gray-900">{{ formatDate(paper.createdAt) }}</span>
+            </div>
+            
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-500">创建者</span>
+              <span class="text-gray-900">{{ getCreatorName(paper) }}</span>
             </div>
           </div>
 
@@ -177,7 +205,9 @@
             </button>
             <button
               @click="editPaper(paper.id)"
-              class="flex-1 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              :disabled="!isCreatedByCurrentUser(paper)"
+              :title="!isCreatedByCurrentUser(paper) ? '只能编辑自己创建的试卷' : ''"
+              class="flex-1 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               编辑
             </button>
@@ -226,9 +256,20 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { teacherExamPaperService, type ExamPaper, type ExamPaperListParams } from '../../../services/teacher/examPaperService'
 import { useNotification } from '../../../composables/useNotification'
+import { extractErrorMessage, logError } from '../../../utils/errorHandler'
+import { useAuthStore } from '../../../stores/auth'
 
 const router = useRouter()
 const { success, error } = useNotification()
+const authStore = useAuthStore()
+
+// 判断是否是当前用户创建的试卷
+const isCreatedByCurrentUser = (paper: ExamPaper): boolean => {
+  if (!authStore.user || !paper.createdById) {
+    return false
+  }
+  return authStore.user.id === paper.createdById
+}
 
 // 筛选条件
 const filters = ref({
@@ -239,7 +280,7 @@ const filters = ref({
 
 // 下拉菜单状态
 const activeDropdown = ref<number | null>(null)
-const dropdownRef = ref<HTMLElement>()
+const dropdownRefs = ref<Record<number, HTMLElement | null>>({})
 
 // 试卷列表
 const papers = ref<ExamPaper[]>([])
@@ -260,33 +301,43 @@ const loadPapers = async () => {
     const params: ExamPaperListParams = {
       page: pagination.value.current,
       size: pagination.value.size,
-      search: filters.value.search || undefined,
-      category: filters.value.category || undefined,
-      difficulty: filters.value.difficulty || undefined
+      keyword: filters.value.search || undefined // 后端期望的参数名是keyword
+      // 注意：category 和 difficulty 目前不在 ExamPaperListParams 中，如需要可以添加到接口定义中
     }
     
+    console.log('加载试卷列表，参数:', params)
     const response = await teacherExamPaperService.getExamPaperList(params)
-    papers.value = response.data.items
-    pagination.value.total = response.data.totalPages
-    pagination.value.totalItems = response.data.totalItems
+    console.log('试卷列表响应:', response)
+    console.log('响应数据项:', response.data.items)
+    
+    papers.value = response.data.items || []
+    pagination.value.total = response.data.totalPages || 0
+    pagination.value.totalItems = response.data.totalItems || 0
+    
+    console.log('加载的试卷数量:', papers.value.length)
+    console.log('试卷列表:', papers.value)
+    console.log('分页信息:', {
+      total: pagination.value.total,
+      totalItems: pagination.value.totalItems,
+      current: pagination.value.current
+    })
   } catch (err) {
-    error('加载试卷列表失败')
-    console.error('Load papers error:', err)
+    const errorMessage = logError(err, '加载试卷列表')
+    error(`加载试卷列表失败: ${errorMessage}`)
   } finally {
     loading.value = false
   }
 }
 
-// 筛选后的试卷
+// 筛选后的试卷（后端已经处理了分页，这里直接返回）
 const filteredPapers = computed(() => {
   return papers.value
 })
 
-// 分页后的试卷
+// 分页后的试卷（后端已经分页，直接使用返回的数据）
 const paginatedPapers = computed(() => {
-  const start = (pagination.value.current - 1) * pagination.value.size
-  const end = start + pagination.value.size
-  return filteredPapers.value.slice(start, end)
+  // 后端已经分页，直接返回数据
+  return filteredPapers.value
 })
 
 // 可见页码
@@ -316,7 +367,7 @@ const updatePagination = () => {
 }
 
 // 搜索防抖
-let searchTimeout: NodeJS.Timeout
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
 const handleSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
@@ -336,13 +387,34 @@ const resetFilters = () => {
   loadPapers()
 }
 
+// 设置下拉菜单ref
+const setDropdownRef = (el: Element | null, paperId: number) => {
+  if (el && paperId) {
+    dropdownRefs.value[paperId] = el as HTMLElement
+  } else if (!el && paperId && dropdownRefs.value) {
+    delete dropdownRefs.value[paperId]
+  }
+}
+
 // 下拉菜单控制
 const toggleDropdown = (id: number) => {
   activeDropdown.value = activeDropdown.value === id ? null : id
 }
 
 const closeDropdown = (event: Event) => {
-  if (dropdownRef.value && !dropdownRef.value.contains(event.target as Node)) {
+  const target = event.target as Node
+  // 检查点击是否在任何下拉菜单内
+  let clickedInsideDropdown = false
+  
+  if (activeDropdown.value !== null && dropdownRefs.value) {
+    const activeRef = dropdownRefs.value[activeDropdown.value]
+    if (activeRef && typeof activeRef.contains === 'function' && activeRef.contains(target)) {
+      clickedInsideDropdown = true
+    }
+  }
+  
+  // 如果点击在下拉菜单外部，关闭下拉菜单
+  if (!clickedInsideDropdown) {
     activeDropdown.value = null
   }
 }
@@ -367,36 +439,64 @@ const goToPage = (page: number) => {
   loadPapers()
 }
 
-// 难度样式和文本
-const getDifficultyClass = (difficulty: string) => {
-  switch (difficulty) {
-    case 'easy':
+// 状态样式和文本
+const getStatusClass = (status: string) => {
+  switch (status) {
+    case 'PUBLISHED':
       return 'bg-green-100 text-green-800'
-    case 'medium':
+    case 'DRAFT':
       return 'bg-yellow-100 text-yellow-800'
-    case 'hard':
-      return 'bg-red-100 text-red-800'
+    case 'ARCHIVED':
+      return 'bg-gray-100 text-gray-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
 }
 
-const getDifficultyText = (difficulty: string) => {
-  switch (difficulty) {
-    case 'easy':
-      return '简单'
-    case 'medium':
-      return '中等'
-    case 'hard':
-      return '困难'
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'PUBLISHED':
+      return '已发布'
+    case 'DRAFT':
+      return '草稿'
+    case 'ARCHIVED':
+      return '已归档'
     default:
       return '未知'
   }
 }
 
+// 获取创建者名称
+const getCreatorName = (paper: ExamPaper): string => {
+  if (paper.createdByName && paper.createdByName.trim() !== '') {
+    return paper.createdByName
+  }
+  // 如果后端没有返回创建者姓名，但有创建者ID，显示ID
+  if (paper.createdById) {
+    return `用户${paper.createdById}`
+  }
+  return '未知'
+}
+
 // 格式化日期
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('zh-CN')
+const formatDate = (dateString: string | undefined): string => {
+  if (!dateString) {
+    return '未知'
+  }
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return '未知'
+    }
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+  } catch (error) {
+    console.error('日期格式化失败:', error)
+    return '未知'
+  }
 }
 
 // 试卷操作
@@ -405,6 +505,11 @@ const previewPaper = (id: number) => {
 }
 
 const editPaper = (id: number) => {
+  const paper = papers.value.find(p => p.id === id)
+  if (paper && !isCreatedByCurrentUser(paper)) {
+    error('只能编辑自己创建的试卷')
+    return
+  }
   router.push(`/teacher/exam-papers/${id}/edit`)
 }
 
@@ -414,11 +519,14 @@ const managePaperQuestions = (id: number) => {
 
 const copyPaper = async (id: number) => {
   try {
-    // TODO: 调用复制API
-    console.log('Copy paper:', id)
+    await teacherExamPaperService.copyExamPaper(id)
+    success('试卷复制成功')
+    await loadPapers()
     activeDropdown.value = null
   } catch (error) {
-    console.error('Failed to copy paper:', error)
+    const errorMessage = logError(error, '复制试卷')
+    error(`复制试卷失败: ${errorMessage}`)
+    activeDropdown.value = null
   }
 }
 
@@ -432,18 +540,26 @@ const deletePaper = async (id: number) => {
     success('试卷删除成功')
     await loadPapers()
   } catch (err) {
-    error('删除试卷失败')
-    console.error('Delete paper error:', err)
+    const errorMessage = logError(err, '删除试卷')
+    error(`删除试卷失败: ${errorMessage}`)
   }
-  closeDropdown()
+  activeDropdown.value = null
 }
 
 onMounted(() => {
   loadPapers()
   document.addEventListener('click', closeDropdown)
+  
+  // 监听搜索输入变化
+  watch(() => filters.value.search, () => {
+    handleSearch()
+  })
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', closeDropdown)
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
 })
 </script>

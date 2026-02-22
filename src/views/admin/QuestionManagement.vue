@@ -344,40 +344,47 @@
         </button>
       </div>
       
-              <!-- 每页条数选择 -->
-        <div class="flex items-center space-x-2">
-          <span class="text-sm text-gray-700">每页</span>
+      <!-- 每页条数选择 -->
+      <div class="flex items-center space-x-2">
+        <span class="text-sm text-gray-700">每页</span>
+        <div class="relative">
           <select
             v-model="pageSize"
             @change="handlePageSizeChange"
-            class="px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="px-3 pr-8 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
           >
             <option value="10">10</option>
             <option value="20">20</option>
             <option value="50">50</option>
             <option value="100">100</option>
           </select>
-          <span class="text-sm text-gray-700">条</span>
-          
-          <!-- 快速跳转 -->
-          <span class="text-sm text-gray-700 ml-4">跳转到</span>
-          <input
-            v-model.number="jumpToPage"
-            type="number"
-            min="1"
-            :max="totalPages"
-            class="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            @keyup.enter="handleJumpToPage"
-            placeholder="页码"
-          />
-          <span class="text-sm text-gray-700">页</span>
-          <button
-            @click="handleJumpToPage"
-            class="px-2 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            跳转
-          </button>
+          <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </div>
         </div>
+        <span class="text-sm text-gray-700">条</span>
+        
+        <!-- 快速跳转 -->
+        <span class="text-sm text-gray-700 ml-4">跳转到</span>
+        <input
+          v-model.number="jumpToPage"
+          type="number"
+          min="1"
+          :max="totalPages"
+          class="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          @keyup.enter="handleJumpToPage"
+          placeholder="页码"
+        />
+        <span class="text-sm text-gray-700">页</span>
+        <button
+          @click="handleJumpToPage"
+          class="px-2 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          跳转
+        </button>
+      </div>
     </div>
 
     <!-- 通知容器 -->

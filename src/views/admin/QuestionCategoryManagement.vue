@@ -161,16 +161,23 @@
             <!-- 每页条数选择 -->
             <div class="flex items-center space-x-2">
               <span class="text-sm text-gray-700">每页</span>
-              <select
-                v-model="pageSize"
-                @change="handlePageSizeChange"
-                class="px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="5">5</option>
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-              </select>
+              <div class="relative">
+                <select
+                  v-model="pageSize"
+                  @change="handlePageSizeChange"
+                  class="px-3 pr-8 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </div>
+              </div>
               <span class="text-sm text-gray-700">条</span>
             </div>
           </div>

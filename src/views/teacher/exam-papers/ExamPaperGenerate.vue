@@ -36,6 +36,39 @@
               />
             </div>
           </div>
+          
+          <!-- 学科和分类选择 -->
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">所属学科 *</label>
+              <select
+                v-model="formData.subjectId"
+                @change="onSubjectChange"
+                required
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              >
+                <option :value="null">请选择学科</option>
+                <option v-for="subject in categoryTree" :key="subject.id" :value="subject.id">
+                  {{ subject.name }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">所属分类 *</label>
+              <select
+                v-model="formData.categoryId"
+                :disabled="!formData.subjectId"
+                required
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option :value="null">请先选择学科</option>
+                <option v-for="category in getSubjectCategories(formData.subjectId)" :key="category.id" :value="category.id">
+                  {{ category.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          
           <div>
             <label class="block text-sm font-medium text-gray-700">试卷描述</label>
             <textarea
@@ -129,19 +162,31 @@
                 </div>
               </div>
 
-              <!-- 分类筛选 -->
+              <!-- 分类筛选 - 从已选学科下的分类中选择 -->
               <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">题目分类</label>
-                <div class="flex flex-wrap gap-2">
-                  <label v-for="category in categories" :key="category.id" class="inline-flex items-center">
+                <label class="block text-sm font-medium text-gray-700 mb-2">题目分类（从所属学科下选择）</label>
+                <div v-if="!formData.subjectId" class="text-sm text-gray-500">请先选择所属学科</div>
+                <div v-else-if="loadingCategories" class="text-sm text-gray-500">加载分类中...</div>
+                <div v-else-if="getSubjectCategories(formData.subjectId).length === 0" class="text-sm text-gray-500">
+                  该学科下暂无分类
+                </div>
+                <div v-else class="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-3">
+                  <label
+                    v-for="category in getSubjectCategories(formData.subjectId)"
+                    :key="category.id"
+                    class="flex items-center space-x-2 hover:bg-gray-50 p-2 rounded cursor-pointer"
+                  >
                     <input
                       v-model="config.categoryIds"
                       type="checkbox"
                       :value="category.id"
                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                     />
-                    <span class="ml-2 text-sm text-gray-700">{{ category.name }}</span>
+                    <span class="text-sm text-gray-700">{{ category.name }}</span>
                   </label>
+                </div>
+                <div v-if="config.categoryIds.length > 0" class="mt-2 text-xs text-gray-500">
+                  已选择 {{ config.categoryIds.length }} 个分类
                 </div>
               </div>
 
@@ -250,36 +295,44 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { teacherCategoryService, type Category } from '../../../services/teacher/categoryService'
+import { teacherExamPaperService } from '../../../services/teacher/examPaperService'
+import { useNotification } from '../../../composables/useNotification'
+import { extractErrorMessage } from '../../../utils/errorHandler'
+import { DEFAULT_CONFIG } from '../../../constants'
 
 const router = useRouter()
+const { success: showSuccess, error: showError } = useNotification()
+
+// 默认配置
+const DEFAULT_TOTAL_SCORE = 100
+const DEFAULT_QUESTION_COUNT = 10
+const DEFAULT_SCORE_PER_QUESTION = 5
 
 // 表单数据
 const formData = ref({
   title: '',
   description: '',
-  totalScore: 100,
+  subjectId: null as number | null, // 所属学科ID
+  categoryId: null as number | null, // 所属分类ID
+  totalScore: DEFAULT_TOTAL_SCORE,
   strategy: 'balanced',
   duplicateStrategy: 'strict',
   excludeUsedQuestions: true,
   questionConfigs: [
     {
       type: 'single',
-      count: 10,
-      scorePerQuestion: 5,
+      count: DEFAULT_QUESTION_COUNT,
+      scorePerQuestion: DEFAULT_SCORE_PER_QUESTION,
       difficulty: 'mixed',
-      categoryIds: [] as number[]
+      categoryIds: [] as number[] // 从已选学科下的分类中选择
     }
   ]
 })
 
-// 分类列表
-const categories = ref([
-  { id: 1, name: '数学' },
-  { id: 2, name: '语文' },
-  { id: 3, name: '英语' },
-  { id: 4, name: '物理' },
-  { id: 5, name: '化学' }
-])
+// 分类树（保持树形结构）
+const categoryTree = ref<Category[]>([])
+const loadingCategories = ref(false)
 
 // 计算属性
 const totalQuestions = computed(() => {
@@ -291,9 +344,16 @@ const calculatedTotalScore = computed(() => {
 })
 
 const canGenerate = computed(() => {
+  const hasValidConfigs = formData.value.questionConfigs.every(config => 
+    config.categoryIds.length > 0
+  )
+  
   return formData.value.title && 
+         formData.value.subjectId &&
+         formData.value.categoryId &&
          formData.value.totalScore > 0 && 
          formData.value.questionConfigs.length > 0 &&
+         hasValidConfigs &&
          calculatedTotalScore.value === formData.value.totalScore
 })
 
@@ -319,11 +379,36 @@ const getTypeText = (type: string) => {
 const addQuestionType = () => {
   formData.value.questionConfigs.push({
     type: 'single',
-    count: 5,
-    scorePerQuestion: 2,
+    count: Math.floor(DEFAULT_QUESTION_COUNT / 2), // 新题型默认数量为总默认数量的一半
+    scorePerQuestion: Math.floor(DEFAULT_SCORE_PER_QUESTION / 2), // 新题型默认分值
     difficulty: 'mixed',
     categoryIds: []
   })
+}
+
+// 获取指定学科下的所有分类（包括子分类）
+const getSubjectCategories = (subjectId: number): Category[] => {
+  const subject = categoryTree.value.find(s => s.id === subjectId)
+  if (!subject) return []
+  
+  // 递归获取所有子分类
+  const getAllChildren = (category: Category): Category[] => {
+    const result: Category[] = []
+    if (category.children && category.children.length > 0) {
+      category.children.forEach(child => {
+        result.push(child)
+        result.push(...getAllChildren(child))
+      })
+    }
+    return result
+  }
+  
+  return getAllChildren(subject)
+}
+
+// 学科变更时清空分类选择
+const onSubjectChange = (config: any) => {
+  config.categoryIds = []
 }
 
 // 移除题型
@@ -331,36 +416,132 @@ const removeQuestionType = (index: number) => {
   formData.value.questionConfigs.splice(index, 1)
 }
 
+// 题目类型映射（前端类型 -> 后端类型）
+const mapQuestionType = (type: string): 'CHOICE' | 'FILL_BLANK' | 'SHORT_ANSWER' | 'PROOF' => {
+  switch (type) {
+    case 'single':
+    case 'multiple':
+    case 'judge':
+      return 'CHOICE'
+    case 'fill':
+      return 'FILL_BLANK'
+    case 'essay':
+      return 'SHORT_ANSWER'
+    default:
+      return 'CHOICE'
+  }
+}
+
+// 难度映射
+const mapDifficulty = (difficulty: string): 'easy' | 'medium' | 'hard' | 'mixed' | 'random' => {
+  switch (difficulty) {
+    case 'easy':
+      return 'easy'
+    case 'medium':
+      return 'medium'
+    case 'hard':
+      return 'hard'
+    case 'mixed':
+      return 'mixed'
+    case 'random':
+      return 'random'
+    default:
+      return 'mixed'
+  }
+}
+
 // 预览生成
 const previewGenerate = async () => {
   try {
-    // TODO: 调用预览API
-    console.log('Preview generate:', formData.value)
+    if (!canGenerate.value) {
+      showError('请完善试卷配置')
+      return
+    }
+
+    const requestData = {
+      title: formData.value.title,
+      description: formData.value.description,
+      subjectId: formData.value.subjectId!,
+      categoryId: formData.value.categoryId!,
+      totalScore: formData.value.totalScore,
+      questionConfigs: formData.value.questionConfigs.map(config => ({
+        type: mapQuestionType(config.type),
+        count: config.count,
+        scorePerQuestion: config.scorePerQuestion,
+        difficulty: mapDifficulty(config.difficulty),
+        categoryIds: config.categoryIds
+      })),
+      strategy: formData.value.strategy as 'random' | 'balanced' | 'progressive',
+      duplicateStrategy: formData.value.duplicateStrategy as 'strict' | 'loose' | 'none',
+      excludeUsedQuestions: formData.value.excludeUsedQuestions
+    }
+
+    const preview = await teacherExamPaperService.previewGenerate(requestData)
+    console.log('Preview result:', preview)
+    // 显示预览结果提示
+    showSuccess(`预览生成完成：预计 ${preview.totalQuestions} 题，总分 ${preview.totalScore} 分`)
   } catch (error) {
     console.error('Failed to preview generate:', error)
+    const errorMessage = extractErrorMessage(error)
+    showError(`预览生成失败: ${errorMessage}`)
   }
 }
 
 // 生成试卷
 const generatePaper = async () => {
   try {
-    // TODO: 调用生成API
-    console.log('Generate paper:', formData.value)
+    if (!canGenerate.value) {
+      showError('请完善试卷配置')
+      return
+    }
+
+    const requestData = {
+      title: formData.value.title,
+      description: formData.value.description,
+      subjectId: formData.value.subjectId!,
+      categoryId: formData.value.categoryId!,
+      totalScore: formData.value.totalScore,
+      questionConfigs: formData.value.questionConfigs.map(config => ({
+        type: mapQuestionType(config.type),
+        count: config.count,
+        scorePerQuestion: config.scorePerQuestion,
+        difficulty: mapDifficulty(config.difficulty),
+        categoryIds: config.categoryIds
+      })),
+      strategy: formData.value.strategy as 'random' | 'balanced' | 'progressive',
+      duplicateStrategy: formData.value.duplicateStrategy as 'strict' | 'loose' | 'none',
+      excludeUsedQuestions: formData.value.excludeUsedQuestions
+    }
+
+    await teacherExamPaperService.generateExamPaper(requestData)
+    showSuccess('试卷生成成功')
     
     // 生成成功后跳转到试卷列表
     router.push('/teacher/exam-papers')
   } catch (error) {
     console.error('Failed to generate paper:', error)
+    const errorMessage = extractErrorMessage(error)
+    // 对于组卷失败，使用更友好的错误提示
+    if (errorMessage.includes('无法找到足够的题目') || errorMessage.includes('未能生成任何题目')) {
+      showError('组卷失败', errorMessage)
+    } else {
+      showError('生成试卷失败', errorMessage)
+    }
   }
 }
 
 // 加载数据
 const loadData = async () => {
   try {
-    // TODO: 加载分类列表
-    console.log('Load categories')
+    loadingCategories.value = true
+    // 获取启用的分类树（保持树形结构）
+    categoryTree.value = await teacherCategoryService.getEnabledCategoryTree()
+    console.log('Category tree loaded:', categoryTree.value)
   } catch (error) {
-    console.error('Failed to load data:', error)
+    console.error('Failed to load categories:', error)
+    showError('加载分类列表失败')
+  } finally {
+    loadingCategories.value = false
   }
 }
 

@@ -39,9 +39,11 @@
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             >
               <option value="">全部状态</option>
-              <option value="draft">草稿</option>
-              <option value="published">已发布</option>
-              <option value="archived">已归档</option>
+              <option value="DRAFT">草稿</option>
+              <option value="PUBLISHED">已发布</option>
+              <option value="ONGOING">进行中</option>
+              <option value="FINISHED">已结束</option>
+              <option value="ARCHIVED">已归档</option>
             </select>
           </div>
           <div>
@@ -162,14 +164,14 @@
                   复制
                 </button>
                 <button
-                  v-if="exam.status === 'draft'"
+                  v-if="exam.status === 'DRAFT' || exam.status === 'draft'"
                   @click="publishExam(exam.id)"
                   class="text-blue-600 hover:text-blue-900 text-sm"
                 >
                   发布
                 </button>
                 <button
-                  v-if="exam.status === 'published'"
+                  v-if="exam.status === 'PUBLISHED' || exam.status === 'published'"
                   @click="archiveExam(exam.id)"
                   class="text-yellow-600 hover:text-yellow-900 text-sm"
                 >
@@ -273,6 +275,9 @@ const selectedExams = ref<number[]>([])
 const exams = ref<Exam[]>([])
 const loading = ref(false)
 
+// 搜索防抖定时器
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
 // 分页
 const pagination = ref({
   current: 1,
@@ -352,7 +357,9 @@ const updatePagination = () => {
 
 // 监听筛选条件变化
 const handleSearch = () => {
+  if (searchTimeout) {
   clearTimeout(searchTimeout)
+  }
   searchTimeout = setTimeout(() => {
     pagination.value.current = 1
     loadExams()
@@ -401,13 +408,18 @@ const previousPage = () => {
 
 // 状态样式
 const getStatusClass = (status: string) => {
-  switch (status) {
+  const statusLower = status?.toLowerCase() || ''
+  switch (statusLower) {
     case 'published':
       return 'bg-green-100 text-green-800'
     case 'draft':
       return 'bg-yellow-100 text-yellow-800'
     case 'archived':
       return 'bg-gray-100 text-gray-800'
+    case 'ongoing':
+      return 'bg-blue-100 text-blue-800'
+    case 'finished':
+      return 'bg-purple-100 text-purple-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
@@ -415,15 +427,20 @@ const getStatusClass = (status: string) => {
 
 // 状态文本
 const getStatusText = (status: string) => {
-  switch (status) {
+  const statusLower = status?.toLowerCase() || ''
+  switch (statusLower) {
     case 'published':
       return '已发布'
     case 'draft':
       return '草稿'
     case 'archived':
       return '已归档'
+    case 'ongoing':
+      return '进行中'
+    case 'finished':
+      return '已结束'
     default:
-      return '未知'
+      return status || '未知'
   }
 }
 

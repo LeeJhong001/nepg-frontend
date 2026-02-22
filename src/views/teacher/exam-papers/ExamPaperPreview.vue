@@ -1,7 +1,13 @@
 <template>
   <div>
+    <!-- 加载状态 -->
+    <div v-if="loading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <p class="mt-2 text-sm text-gray-500">加载中...</p>
+    </div>
+    
     <!-- 页面标题和操作 -->
-    <div class="sm:flex sm:items-center sm:justify-between mb-6">
+    <div v-else class="sm:flex sm:items-center sm:justify-between mb-6">
       <div>
         <nav class="flex" aria-label="Breadcrumb">
           <ol class="flex items-center space-x-4">
@@ -53,21 +59,17 @@
             <dt class="text-sm font-medium text-gray-500">试卷名称</dt>
             <dd class="mt-1 text-sm text-gray-900">{{ paper.title }}</dd>
           </div>
-          <div>
+          <div v-if="paper.categoryName">
             <dt class="text-sm font-medium text-gray-500">科目分类</dt>
-            <dd class="mt-1 text-sm text-gray-900">{{ paper.category }}</dd>
+            <dd class="mt-1 text-sm text-gray-900">{{ paper.categoryName }}</dd>
           </div>
-          <div>
-            <dt class="text-sm font-medium text-gray-500">难度等级</dt>
-            <dd class="mt-1">
-              <span :class="getDifficultyClass(paper.difficulty)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                {{ getDifficultyText(paper.difficulty) }}
-              </span>
-            </dd>
+          <div v-if="paper.subjectName">
+            <dt class="text-sm font-medium text-gray-500">所属学科</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ paper.subjectName }}</dd>
           </div>
           <div>
             <dt class="text-sm font-medium text-gray-500">题目数量</dt>
-            <dd class="mt-1 text-sm text-gray-900">{{ paper.questionCount }} 题</dd>
+            <dd class="mt-1 text-sm text-gray-900">{{ paper.questions?.length || 0 }} 题</dd>
           </div>
           <div>
             <dt class="text-sm font-medium text-gray-500">总分</dt>
@@ -91,7 +93,7 @@
         <div class="text-center">
           <h2 class="text-xl font-bold text-gray-900">{{ paper.title }}</h2>
           <p class="mt-2 text-sm text-gray-600">
-            总分：{{ paper.totalScore }} 分　　时间：{{ paper.duration }} 分钟　　题数：{{ paper.questionCount }} 题
+            总分：{{ paper.totalScore || 0 }} 分　　时间：{{ paper.duration || 0 }} 分钟　　题数：{{ paper.questions?.length || 0 }} 题
           </p>
         </div>
       </div>
@@ -116,32 +118,35 @@
         </div>
 
         <!-- 题目列表 -->
-        <div class="space-y-6">
-          <div v-for="(question, index) in paper.questions" :key="question.id" class="border-b border-gray-200 pb-6 last:border-b-0">
+        <div v-if="!paper.questions || paper.questions.length === 0" class="text-center py-12">
+          <p class="text-gray-500">暂无题目</p>
+        </div>
+        <div v-else class="space-y-6">
+          <div v-for="(question, index) in paper.questions" :key="question.questionId || question.id" class="border-b border-gray-200 pb-6 last:border-b-0">
             <div class="flex items-start space-x-3">
               <span class="text-sm font-medium text-gray-900 mt-1">{{ index + 1 }}.</span>
               <div class="flex-1">
                 <!-- 题目标题 -->
                 <div class="flex items-center space-x-2 mb-3">
-                  <span :class="getTypeClass(question.type)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                    {{ getTypeText(question.type) }}
+                  <span :class="getTypeClass(question.questionType || question.type)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                    {{ getTypeText(question.questionType || question.type) }}
                   </span>
-                  <span class="text-sm text-gray-500">({{ question.score }} 分)</span>
+                  <span class="text-sm text-gray-500">({{ question.score || 0 }} 分)</span>
                 </div>
 
                 <!-- 题目内容 -->
-                <div class="text-sm text-gray-900 mb-4" v-html="formatQuestionContent(question.content)"></div>
+                <div class="text-sm text-gray-900 mb-4" v-html="formatQuestionContent(getQuestionContent(question))"></div>
 
                 <!-- 选择题选项 -->
-                <div v-if="question.type === 'single' || question.type === 'multiple'" class="space-y-2">
-                  <div v-for="(option, optionIndex) in question.options" :key="optionIndex" class="flex items-center space-x-2">
+                <div v-if="isChoiceQuestion(question.questionType || question.type)" class="space-y-2">
+                  <div v-for="(option, optionIndex) in getQuestionOptions(question)" :key="optionIndex" class="flex items-center space-x-2">
                     <span class="text-sm text-gray-700">{{ getOptionLabel(optionIndex) }}.</span>
                     <span class="text-sm text-gray-900">{{ option }}</span>
                   </div>
                 </div>
 
                 <!-- 判断题 -->
-                <div v-if="question.type === 'judge'" class="flex items-center space-x-6">
+                <div v-if="isJudgeQuestion(question.questionType || question.type)" class="flex items-center space-x-6">
                   <div class="flex items-center space-x-2">
                     <span class="w-4 h-4 border border-gray-400 rounded"></span>
                     <span class="text-sm text-gray-900">正确</span>
@@ -153,15 +158,15 @@
                 </div>
 
                 <!-- 填空题 -->
-                <div v-if="question.type === 'fill'" class="space-y-3">
-                  <div v-for="(blank, blankIndex) in question.blanks || [1]" :key="blankIndex" class="flex items-center space-x-2">
+                <div v-if="isFillQuestion(question.questionType || question.type)" class="space-y-3">
+                  <div v-for="(blank, blankIndex) in getBlanksFromContent(getQuestionContent(question))" :key="blankIndex" class="flex items-center space-x-2">
                     <span class="text-sm text-gray-700">{{ blankIndex + 1 }}.</span>
                     <div class="border-b border-gray-400 flex-1 h-6"></div>
                   </div>
                 </div>
 
                 <!-- 问答题 -->
-                <div v-if="question.type === 'essay'" class="space-y-2">
+                <div v-if="isEssayQuestion(question.questionType || question.type)" class="space-y-2">
                   <div v-for="line in 8" :key="line" class="border-b border-gray-300 h-6"></div>
                 </div>
               </div>
@@ -176,69 +181,45 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { teacherExamPaperService, type ExamPaperDetail } from '../../../services/teacher/examPaperService'
+import { useNotification } from '../../../composables/useNotification'
 
 const route = useRoute()
+const { error: showError } = useNotification()
 const paperId = route.params.id as string
 
+// 加载状态
+const loading = ref(false)
+
 // 试卷数据
-const paper = ref({
-  id: 1,
-  title: '数学期中试卷',
-  description: '涵盖前半学期所有知识点',
-  category: '数学',
-  difficulty: 'medium',
-  questionCount: 20,
-  totalScore: 100,
-  duration: 120,
-  questions: [
-    {
-      id: 1,
-      type: 'single',
-      content: '下列哪个选项是正确的数学公式？',
-      score: 5,
-      options: ['2+2=5', '3×3=9', '4÷2=3', '5-1=3']
-    },
-    {
-      id: 2,
-      type: 'multiple',
-      content: '请选择所有正确的几何图形性质：',
-      score: 8,
-      options: ['正方形四边相等', '圆的周长等于直径乘以π', '三角形内角和为180度', '平行四边形对角相等']
-    },
-    {
-      id: 3,
-      type: 'judge',
-      content: '任何数乘以0都等于0。',
-      score: 3
-    },
-    {
-      id: 4,
-      type: 'fill',
-      content: '一个圆的半径为r，则它的面积为______，周长为______。',
-      score: 6,
-      blanks: [1, 2]
-    },
-    {
-      id: 5,
-      type: 'essay',
-      content: '请详细说明勾股定理的证明过程，并举一个实际应用的例子。',
-      score: 15
-    }
-  ]
+const paper = ref<Partial<ExamPaperDetail & {
+  questions?: any[] // 使用any[]以匹配后端返回的实际结构
+}>>({
+  id: 0,
+  title: '',
+  description: '',
+  totalScore: 0,
+  duration: 0,
+  questions: []
 })
 
 // 题目类型样式和文本
 const getTypeClass = (type: string) => {
-  switch (type) {
-    case 'single':
+  const upperType = type.toUpperCase()
+  switch (upperType) {
+    case 'CHOICE':
+    case 'SINGLE':
       return 'bg-blue-100 text-blue-800'
-    case 'multiple':
+    case 'MULTIPLE':
       return 'bg-green-100 text-green-800'
-    case 'judge':
+    case 'JUDGE':
       return 'bg-yellow-100 text-yellow-800'
-    case 'fill':
+    case 'FILL_BLANK':
+    case 'FILL':
       return 'bg-purple-100 text-purple-800'
-    case 'essay':
+    case 'SHORT_ANSWER':
+    case 'PROOF':
+    case 'ESSAY':
       return 'bg-red-100 text-red-800'
     default:
       return 'bg-gray-100 text-gray-800'
@@ -246,48 +227,72 @@ const getTypeClass = (type: string) => {
 }
 
 const getTypeText = (type: string) => {
-  switch (type) {
-    case 'single':
+  const upperType = type.toUpperCase()
+  switch (upperType) {
+    case 'CHOICE':
+    case 'SINGLE':
       return '单选题'
-    case 'multiple':
+    case 'MULTIPLE':
       return '多选题'
-    case 'judge':
+    case 'JUDGE':
       return '判断题'
-    case 'fill':
+    case 'FILL_BLANK':
+    case 'FILL':
       return '填空题'
-    case 'essay':
+    case 'SHORT_ANSWER':
+    case 'PROOF':
+    case 'ESSAY':
       return '问答题'
     default:
       return '未知'
   }
 }
 
-// 难度样式和文本
-const getDifficultyClass = (difficulty: string) => {
-  switch (difficulty) {
-    case 'easy':
-      return 'bg-green-100 text-green-800'
-    case 'medium':
-      return 'bg-yellow-100 text-yellow-800'
-    case 'hard':
-      return 'bg-red-100 text-red-800'
-    default:
-      return 'bg-gray-100 text-gray-800'
-  }
+// 判断题目类型
+const isChoiceQuestion = (type: string) => {
+  const upperType = type.toUpperCase()
+  return upperType === 'CHOICE' || upperType === 'SINGLE' || upperType === 'MULTIPLE'
 }
 
-const getDifficultyText = (difficulty: string) => {
-  switch (difficulty) {
-    case 'easy':
-      return '简单'
-    case 'medium':
-      return '中等'
-    case 'hard':
-      return '困难'
-    default:
-      return '未知'
-  }
+const isJudgeQuestion = (type: string) => {
+  const upperType = type.toUpperCase()
+  return upperType === 'JUDGE'
 }
+
+const isFillQuestion = (type: string) => {
+  const upperType = type.toUpperCase()
+  return upperType === 'FILL_BLANK' || upperType === 'FILL'
+}
+
+const isEssayQuestion = (type: string) => {
+  const upperType = type.toUpperCase()
+  return upperType === 'SHORT_ANSWER' || upperType === 'PROOF' || upperType === 'ESSAY'
+}
+
+// 获取题目内容
+const getQuestionContent = (question: any) => {
+  return question.questionContent || question.content || question.questionTitle || ''
+}
+
+// 获取题目选项
+const getQuestionOptions = (question: any) => {
+  if (!question.options) return []
+  if (typeof question.options === 'string') {
+    try {
+      return JSON.parse(question.options)
+    } catch {
+      return []
+    }
+  }
+  return Array.isArray(question.options) ? question.options : []
+}
+
+// 从内容中提取填空题的空格数量
+const getBlanksFromContent = (content: string) => {
+  const blankMatches = content.match(/______/g)
+  return blankMatches ? blankMatches.map((_, i) => i + 1) : [1]
+}
+
 
 // 获取选项标签
 const getOptionLabel = (index: number) => {
@@ -336,10 +341,46 @@ const printPaper = () => {
 // 加载试卷数据
 const loadPaper = async () => {
   try {
-    // TODO: 调用API获取试卷详情
-    console.log('Load paper:', paperId)
+    loading.value = true
+    
+    // 加载试卷详情（包含题目列表）
+    const paperData = await teacherExamPaperService.getExamPaper(Number(paperId))
+    
+    // 转换题目格式
+    const mappedQuestions = (paperData.questions || []).map((q: any) => ({
+      questionId: q.questionId,
+      id: q.questionId, // 兼容字段
+      questionType: q.questionType,
+      type: q.questionType, // 兼容字段
+      questionContent: q.questionContent || q.questionTitle,
+      content: q.questionContent || q.questionTitle, // 兼容字段
+      questionTitle: q.questionTitle,
+      score: q.score || 0,
+      sortOrder: q.sortOrder,
+      options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : [],
+      difficulty: q.difficulty
+    })).sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    
+    // 映射数据
+    paper.value = {
+      id: paperData.id,
+      title: paperData.title,
+      description: paperData.description || '',
+      totalScore: paperData.totalScore || 0,
+      duration: paperData.duration || 0,
+      subjectId: paperData.subjectId,
+      categoryId: paperData.categoryId,
+      subjectName: paperData.subjectName,
+      categoryName: paperData.categoryName,
+      questions: mappedQuestions as any
+    }
+    
+    console.log('试卷预览数据加载成功:', paper.value)
   } catch (error) {
-    console.error('Failed to load paper:', error)
+    console.error('加载试卷预览失败:', error)
+    showError('加载试卷预览失败')
+  } finally {
+    loading.value = false
   }
 }
 

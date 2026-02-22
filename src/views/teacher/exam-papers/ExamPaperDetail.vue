@@ -84,6 +84,10 @@
             <dd class="mt-1 text-sm text-gray-900">{{ formatDateTime(paper.createdAt) }}</dd>
           </div>
           <div>
+            <dt class="text-sm font-medium text-gray-500">创建者</dt>
+            <dd class="mt-1 text-sm text-gray-900">{{ getCreatorName(paper) }}</dd>
+          </div>
+          <div>
             <dt class="text-sm font-medium text-gray-500">更新时间</dt>
             <dd class="mt-1 text-sm text-gray-900">{{ formatDateTime(paper.updatedAt) }}</dd>
           </div>
@@ -193,10 +197,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import type { ExamPaperDetail } from '../../../services/teacher/examPaperService'
 
 const route = useRoute()
 const router = useRouter()
 const paperId = route.params.id as string
+
+// 获取创建者名称
+const getCreatorName = (paper: any): string => {
+  if (paper.createdByName && paper.createdByName.trim() !== '') {
+    return paper.createdByName
+  }
+  // 如果后端没有返回创建者姓名，但有创建者ID，显示ID
+  if (paper.createdById) {
+    return `用户${paper.createdById}`
+  }
+  return '未知'
+}
 
 // 试卷详情
 const paper = ref({

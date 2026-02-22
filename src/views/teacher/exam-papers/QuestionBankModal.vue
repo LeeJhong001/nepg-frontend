@@ -81,9 +81,12 @@
 
       <!-- 题目列表 -->
       <div class="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-        <div class="divide-y divide-gray-200">
+        <div v-if="questions.length === 0" class="p-8 text-center text-gray-500">
+          暂无题目数据
+        </div>
+        <div v-else class="divide-y divide-gray-200">
           <div
-            v-for="question in filteredQuestions"
+            v-for="question in questions"
             :key="question.id"
             class="p-4 hover:bg-gray-50"
           >
@@ -99,7 +102,7 @@
                   <span :class="getTypeClass(question.type)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
                     {{ getTypeText(question.type) }}
                   </span>
-                  <span class="text-sm text-gray-500">{{ question.category }}</span>
+                  <span class="text-sm text-gray-500">{{ question.categoryName || question.category || '未分类' }}</span>
                   <span :class="getDifficultyClass(question.difficulty)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
                     {{ getDifficultyText(question.difficulty) }}
                   </span>
@@ -178,6 +181,12 @@ import { getEnabledSubjects, type Subject } from '@/services/common/subjectServi
 const emit = defineEmits<{
   close: []
   select: [questions: any[]]
+}>()
+
+// Props: 接收试卷的学科和分类ID，用于自动筛选
+const props = defineProps<{
+  subjectId?: number | null
+  categoryId?: number | null
 }>()
 
 // 筛选条件
@@ -267,7 +276,10 @@ const goToPage = (page: number) => {
 
 // 样式和文本函数
 const getTypeClass = (type: string) => {
-  switch (type) {
+  // 先标准化类型
+  const normalizedType = normalizeQuestionType(type)
+  
+  switch (normalizedType) {
     case 'single':
       return 'bg-blue-100 text-blue-800'
     case 'multiple':
@@ -284,7 +296,10 @@ const getTypeClass = (type: string) => {
 }
 
 const getTypeText = (type: string) => {
-  switch (type) {
+  // 先检查是否是后端格式（大写），如果是则转换
+  const normalizedType = normalizeQuestionType(type)
+  
+  switch (normalizedType) {
     case 'single':
       return '单选'
     case 'multiple':
@@ -300,8 +315,30 @@ const getTypeText = (type: string) => {
   }
 }
 
-const getDifficultyClass = (difficulty: string) => {
-  switch (difficulty) {
+// 将后端题目类型转换为前端类型
+const normalizeQuestionType = (type: string): string => {
+  // 后端格式：CHOICE, FILL_BLANK, SHORT_ANSWER, PROOF
+  // 前端格式：single, fill, essay
+  const typeMap: Record<string, string> = {
+    'CHOICE': 'single',
+    'FILL_BLANK': 'fill',
+    'SHORT_ANSWER': 'essay',
+    'PROOF': 'essay'
+  }
+  
+  // 如果已经是前端格式，直接返回
+  if (typeMap[type]) {
+    return typeMap[type]
+  }
+  
+  // 如果已经是前端格式，直接返回
+  return type.toLowerCase()
+}
+
+const getDifficultyClass = (difficulty: string | number) => {
+  const normalizedDifficulty = normalizeDifficulty(difficulty)
+  
+  switch (normalizedDifficulty) {
     case 'easy':
       return 'bg-green-100 text-green-800'
     case 'medium':
@@ -313,8 +350,10 @@ const getDifficultyClass = (difficulty: string) => {
   }
 }
 
-const getDifficultyText = (difficulty: string) => {
-  switch (difficulty) {
+const getDifficultyText = (difficulty: string | number) => {
+  const normalizedDifficulty = normalizeDifficulty(difficulty)
+  
+  switch (normalizedDifficulty) {
     case 'easy':
       return '简单'
     case 'medium':
@@ -324,6 +363,22 @@ const getDifficultyText = (difficulty: string) => {
     default:
       return '未知'
   }
+}
+
+// 将难度转换为字符串格式
+const normalizeDifficulty = (difficulty: string | number): string => {
+  if (typeof difficulty === 'string') {
+    return difficulty.toLowerCase()
+  }
+  
+  // 数字转字符串：1-2=简单，3=中等，4-5=困难
+  if (typeof difficulty === 'number') {
+    if (difficulty <= 2) return 'easy'
+    if (difficulty === 3) return 'medium'
+    if (difficulty >= 4) return 'hard'
+  }
+  
+  return 'unknown'
 }
 
 // 确认选择
@@ -342,9 +397,28 @@ const loadQuestions = async () => {
       size: pagination.value.size
     }
     
-    if (filters.value.type) params.type = filters.value.type
+    // 转换前端类型为后端类型
+    if (filters.value.type) {
+      const typeMap: Record<string, string> = {
+        'single': 'CHOICE',
+        'multiple': 'CHOICE',
+        'judge': 'CHOICE',
+        'fill': 'FILL_BLANK',
+        'essay': 'SHORT_ANSWER'
+      }
+      params.type = typeMap[filters.value.type] || filters.value.type
+    }
+    
     if (filters.value.categoryId) params.categoryId = Number(filters.value.categoryId)
-    if (filters.value.difficulty) params.difficulty = Number(filters.value.difficulty)
+    if (filters.value.difficulty) {
+      // 转换难度字符串为数字 (easy=1, medium=2, hard=3)
+      const difficultyMap: Record<string, number> = {
+        'easy': 1,
+        'medium': 2,
+        'hard': 3
+      }
+      params.difficulty = difficultyMap[filters.value.difficulty] || Number(filters.value.difficulty)
+    }
     if (filters.value.search) params.keyword = filters.value.search
     
     const response = await teacherQuestionService.getQuestions(params)
@@ -376,8 +450,19 @@ watch(() => pagination.value.current, () => {
   loadQuestions()
 })
 
+// 初始化筛选条件（根据传入的props）
+const initializeFilters = () => {
+  if (props.categoryId) {
+    filters.value.categoryId = String(props.categoryId)
+  } else if (props.subjectId) {
+    // 如果没有分类ID，但有学科ID，可以选择性设置
+    // 这里暂时不设置，让用户手动选择分类
+  }
+}
+
 onMounted(() => {
   loadSubjects()
+  initializeFilters()
   loadQuestions()
 })
 </script>
